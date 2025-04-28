@@ -18,7 +18,7 @@ import { Eye, EyeOff, Lock, User } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('password');
   const [role, setRole] = useState<UserRole>('physician');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -139,7 +139,11 @@ const LoginPage: React.FC = () => {
               <div className="text-xs text-center text-gray-500 mt-4">
                 <p>Demo credentials:</p>
                 <p className="text-muted-foreground">
-                  Use any @healable.com email matching your role with password: password
+                  Use any email ending with @healable.com with password: password
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  Pre-set accounts: dr.smith@healable.com (physician), case.jones@healable.com (caseManager),
+                  admin@healable.com (admin), analyst@healable.com (analyst)
                 </p>
               </div>
             </form>

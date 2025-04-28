@@ -61,6 +61,14 @@ const MOCK_USERS: Record<string, UserInfo> = {
     role: 'analyst',
     department: 'Operations',
     avatar: ''
+  },
+  // Add a catch-all demo account that accepts any email with @healable.com
+  'test@healable.com': {
+    id: '5',
+    name: 'Test User',
+    email: 'test@healable.com',
+    role: 'admin', // Default role that will be overridden
+    avatar: ''
   }
 };
 
@@ -74,18 +82,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // This is a mock implementation - in a real app, you would call an API
     return new Promise((resolve) => {
       setTimeout(() => {
-        // Check if user exists (in a real app this would be handled by your backend)
-        const user = MOCK_USERS[email.toLowerCase()];
-        
-        if (user && user.role === role && password === 'password') {
-          setUserInfo(user);
-          setIsAuthenticated(true);
-          toast.success("Login successful");
-          resolve(true);
-        } else {
-          toast.error("Invalid credentials or role mismatch");
+        // Check if the password is correct (for demo, accept "password")
+        if (password !== 'password') {
+          toast.error("Invalid password. Use 'password' for demo");
           resolve(false);
+          return;
         }
+        
+        const emailLower = email.toLowerCase();
+        
+        // Check if email ends with @healable.com
+        if (!emailLower.endsWith('@healable.com')) {
+          toast.error("Please use an email ending with @healable.com");
+          resolve(false);
+          return;
+        }
+
+        // Find specific user or use generic demo user
+        let user = MOCK_USERS[emailLower];
+        
+        // If specific user doesn't exist, but email has @healable.com domain,
+        // create a dynamic user with the selected role
+        if (!user) {
+          user = {
+            id: '999',
+            name: emailLower.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            email: emailLower,
+            role: role,
+            department: role === 'physician' ? 'General Practice' : 
+                       role === 'caseManager' ? 'Care Coordination' : 
+                       role === 'analyst' ? 'Data Analytics' : 'Administration'
+          };
+        } else if (user.role !== role) {
+          // If user exists but selected role doesn't match
+          toast.error(`Selected role doesn't match the user's role. Please choose ${user.role} role`);
+          resolve(false);
+          return;
+        }
+        
+        setUserInfo(user);
+        setIsAuthenticated(true);
+        toast.success("Login successful");
+        resolve(true);
       }, 800);
     });
   };

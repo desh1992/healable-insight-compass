@@ -1,10 +1,10 @@
 
 import * as React from "react";
-import { motion, MotionProps } from "framer-motion";
+import { motion, HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { fadeInUp, hoverScale } from "@/lib/animations";
 
-interface AnimatedCardProps extends React.HTMLAttributes<HTMLDivElement>, MotionProps {
+interface AnimatedCardProps extends HTMLMotionProps<"div"> {
   children: React.ReactNode;
   variant?: "default" | "hover" | "static";
   delay?: number;

@@ -40,14 +40,18 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center login-container">
+    <div className="min-h-screen flex flex-col items-center justify-center login-container bg-gradient-to-b from-[#00304a]/10 to-[#003b57]/5">
       <div className="w-full max-w-md px-4">
-        <MotionWrapper 
-          variant="scale" 
-          className="flex justify-center mb-8"
+        <motion.div 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="flex justify-center mb-12"
         >
-          <HealableLogo size="lg" />
-        </MotionWrapper>
+          <div className="animate-float">
+            <HealableLogo size="lg" animateOnHover={true} />
+          </div>
+        </motion.div>
         
         <MotionWrapper variant="fadeUp">
           <Card className="w-full shadow-lg border-healable-light">
@@ -57,7 +61,7 @@ const LoginPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <CardTitle className="text-2xl font-semibold text-center text-healable-secondary">
+                <CardTitle className="text-2xl font-serif text-center bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-amber-700">
                   Welcome Back
                 </CardTitle>
               </motion.div>
@@ -129,7 +133,7 @@ const LoginPage: React.FC = () => {
                 >
                   <Button 
                     type="submit" 
-                    className="w-full bg-healable-primary hover:bg-healable-secondary transition-colors"
+                    className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 transition-colors"
                     disabled={isLoading}
                   >
                     {isLoading ? "Signing in..." : "Sign In"}

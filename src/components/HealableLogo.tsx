@@ -1,16 +1,19 @@
 
 import React from 'react';
+import { motion } from 'framer-motion';
 
 interface HealableLogoProps {
   size?: 'sm' | 'md' | 'lg';
   withText?: boolean;
   className?: string;
+  animateOnHover?: boolean;
 }
 
 const HealableLogo: React.FC<HealableLogoProps> = ({ 
   size = 'md', 
   withText = true,
-  className = ''
+  className = '',
+  animateOnHover = false
 }) => {
   const sizeClasses = {
     sm: 'h-8',
@@ -18,24 +21,34 @@ const HealableLogo: React.FC<HealableLogoProps> = ({
     lg: 'h-16'
   };
 
+  const logoVariants = {
+    initial: { scale: 1 },
+    hover: { scale: 1.05, transition: { duration: 0.3 } }
+  };
+
   return (
     <div className={`flex items-center ${className}`}>
-      <div className="relative">
-        <div className={`healable-gradient rounded-full ${sizeClasses[size]} aspect-square flex items-center justify-center`}>
-          <span className="text-white font-bold" style={{ 
-            fontSize: size === 'sm' ? '1.2rem' : size === 'md' ? '1.8rem' : '2.2rem' 
-          }}>H</span>
-        </div>
-        <div className="absolute -bottom-1 -right-1 bg-healable-accent rounded-full w-1/3 h-1/3 flex items-center justify-center">
-          <div className="bg-white rounded-full w-3/4 h-3/4"></div>
-        </div>
-      </div>
+      <motion.div 
+        className="relative"
+        variants={animateOnHover ? logoVariants : undefined}
+        initial="initial"
+        whileHover={animateOnHover ? "hover" : undefined}
+      >
+        <img 
+          src="/lovable-uploads/28f13eaf-b76b-49cf-aa90-03a21fad5212.png" 
+          alt="Healable Logo" 
+          className={`${sizeClasses[size]} object-contain`}
+        />
+      </motion.div>
       
       {withText && (
-        <div className="ml-3 font-bold text-healable-secondary" style={{ 
+        <div className="ml-3 font-serif font-medium text-healable-secondary" style={{ 
           fontSize: size === 'sm' ? '1.2rem' : size === 'md' ? '1.8rem' : '2.2rem' 
         }}>
-          Healable<span className="text-healable-primary">Insight</span>
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-amber-600">
+            Healable
+          </span>
+          <span className="text-healable-primary">Insight</span>
         </div>
       )}
     </div>

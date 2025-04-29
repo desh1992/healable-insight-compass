@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -64,14 +63,42 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				healable: {
-          primary: "#0079BF",
-          secondary: "#1A365D",
-          accent: "#4C9AFF",
-          light: "#F7FAFC",
-          subtle: "#E2E8F0",
-          warning: "#F59E0B",
-          danger: "#EF4444"
-        }
+					primary: {
+						DEFAULT: '#003B57',
+						dark: '#1A365D',
+						light: '#4C9AFF',
+					},
+					secondary: {
+						DEFAULT: '#1A365D',
+						dark: '#2D3748',
+						light: '#4299E1',
+					},
+					accent: {
+						DEFAULT: '#4C9AFF',
+						dark: '#63B3ED',
+						light: '#90CDF4',
+					},
+					light: {
+						DEFAULT: '#F7FAFC',
+						dark: '#EDF2F7',
+						light: '#FFFFFF',
+					},
+					subtle: {
+						DEFAULT: '#E2E8F0',
+						dark: '#CBD5E0',
+						light: '#F7FAFC',
+					},
+					warning: {
+						DEFAULT: '#F59E0B',
+						dark: '#D97706',
+						light: '#FBBF24',
+					},
+					danger: {
+						DEFAULT: '#EF4444',
+						dark: '#DC2626',
+						light: '#F87171',
+					},
+				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

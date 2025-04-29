@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -8,18 +7,16 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import HealableLogo from '@/components/HealableLogo';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Lock, User } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('password');
-  const [role, setRole] = useState<UserRole>('physician');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -30,7 +27,7 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password, role);
+      const success = await login(email, password);
       if (success) {
         navigate('/ethics-agreement');
       }
@@ -65,7 +62,7 @@ const LoginPage: React.FC = () => {
                   </div>
                   <Input
                     id="email"
-                    placeholder="you@healable.com"
+                    placeholder="Enter your email"
                     type="email"
                     className="pl-10"
                     value={email}
@@ -83,7 +80,7 @@ const LoginPage: React.FC = () => {
                   </div>
                   <Input
                     id="password"
-                    placeholder="********"
+                    placeholder="Enter your password"
                     type={showPassword ? "text" : "password"}
                     className="pl-10 pr-10"
                     value={password}
@@ -101,33 +98,6 @@ const LoginPage: React.FC = () => {
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label>Select Your Role</Label>
-                <RadioGroup 
-                  defaultValue="physician"
-                  className="grid grid-cols-2 gap-2"
-                  value={role}
-                  onValueChange={(value) => setRole(value as UserRole)}
-                >
-                  <div className="flex items-center space-x-2 border rounded-md p-3">
-                    <RadioGroupItem value="physician" id="physician" />
-                    <Label htmlFor="physician" className="cursor-pointer w-full">Physician</Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-md p-3">
-                    <RadioGroupItem value="caseManager" id="caseManager" />
-                    <Label htmlFor="caseManager" className="cursor-pointer w-full">Case Manager</Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-md p-3">
-                    <RadioGroupItem value="admin" id="admin" />
-                    <Label htmlFor="admin" className="cursor-pointer w-full">Administrator</Label>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-md p-3">
-                    <RadioGroupItem value="analyst" id="analyst" />
-                    <Label htmlFor="analyst" className="cursor-pointer w-full">Operations/Analyst</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              
               <Button 
                 type="submit" 
                 className="w-full bg-healable-primary hover:bg-healable-secondary transition-colors"
@@ -135,17 +105,6 @@ const LoginPage: React.FC = () => {
               >
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
-              
-              <div className="text-xs text-center text-gray-500 mt-4">
-                <p>Demo credentials:</p>
-                <p className="text-muted-foreground">
-                  Use any email ending with @healable.com with password: password
-                </p>
-                <p className="text-muted-foreground mt-1">
-                  Pre-set accounts: dr.smith@healable.com (physician), case.jones@healable.com (caseManager),
-                  admin@healable.com (admin), analyst@healable.com (analyst)
-                </p>
-              </div>
             </form>
           </CardContent>
         </Card>

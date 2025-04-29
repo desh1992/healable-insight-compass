@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "@/components/ui/sonner";
@@ -8,12 +7,13 @@ export type UserRole = 'physician' | 'caseManager' | 'admin' | 'analyst';
 
 // Define user information type
 export interface UserInfo {
-  id: string;
+  userId: string;
   name: string;
   email: string;
   role: UserRole;
-  department?: string;
-  avatar?: string;
+  department: string;
+  access_token: string;
+  token_type: string;
 }
 
 // Define the auth context type
@@ -21,7 +21,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   userInfo: UserInfo | null;
   ethicsAgreed: boolean;
-  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   agreeToEthics: () => void;
 }
@@ -29,106 +29,65 @@ interface AuthContextType {
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for demo purposes
-const MOCK_USERS: Record<string, UserInfo> = {
-  'dr.smith@healable.com': {
-    id: '1',
-    name: 'Dr. Sarah Smith',
-    email: 'dr.smith@healable.com',
-    role: 'physician',
-    department: 'Cardiology',
-    avatar: ''
-  },
-  'case.jones@healable.com': {
-    id: '2',
-    name: 'Alex Jones',
-    email: 'case.jones@healable.com',
-    role: 'caseManager',
-    department: 'Patient Care',
-    avatar: ''
-  },
-  'admin@healable.com': {
-    id: '3',
-    name: 'Admin User',
-    email: 'admin@healable.com',
-    role: 'admin',
-    avatar: ''
-  },
-  'analyst@healable.com': {
-    id: '4',
-    name: 'Data Analyst',
-    email: 'analyst@healable.com',
-    role: 'analyst',
-    department: 'Operations',
-    avatar: ''
-  },
-  // Add a catch-all demo account that accepts any email with @healable.com
-  'test@healable.com': {
-    id: '5',
-    name: 'Test User',
-    email: 'test@healable.com',
-    role: 'admin', // Default role that will be overridden
-    avatar: ''
-  }
-};
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [ethicsAgreed, setEthicsAgreed] = useState(false);
   const navigate = useNavigate();
 
-  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
-    // This is a mock implementation - in a real app, you would call an API
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Check if the password is correct (for demo, accept "password")
-        if (password !== 'password') {
-          toast.error("Invalid password. Use 'password' for demo");
-          resolve(false);
-          return;
-        }
-        
-        const emailLower = email.toLowerCase();
-        
-        // Check if email ends with @healable.com
-        if (!emailLower.endsWith('@healable.com')) {
-          toast.error("Please use an email ending with @healable.com");
-          resolve(false);
-          return;
-        }
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const response = await fetch('https://healable-insights-backend-f8567b9c5516.herokuapp.com/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
-        // Find specific user or use generic demo user
-        let user = MOCK_USERS[emailLower];
-        
-        // If specific user doesn't exist, but email has @healable.com domain,
-        // create a dynamic user with the selected role
-        if (!user) {
-          user = {
-            id: '999',
-            name: emailLower.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            email: emailLower,
-            role: role,
-            department: role === 'physician' ? 'General Practice' : 
-                       role === 'caseManager' ? 'Care Coordination' : 
-                       role === 'analyst' ? 'Data Analytics' : 'Administration'
-          };
-        } else if (user.role !== role) {
-          // If user exists but selected role doesn't match
-          toast.error(`Selected role doesn't match the user's role. Please choose ${user.role} role`);
-          resolve(false);
-          return;
-        }
-        
-        setUserInfo(user);
-        setIsAuthenticated(true);
-        toast.success("Login successful");
-        resolve(true);
-      }, 800);
-    });
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(errorData.detail || "Login failed. Please check your credentials.");
+        return false;
+      }
+
+      const data = await response.json();
+      
+      // Store the user info and token
+      const userInfo: UserInfo = {
+        userId: data.userId,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        department: data.department || '',
+        access_token: data.access_token,
+        token_type: data.token_type,
+      };
+
+      // Store token in localStorage for persistence
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+
+      setUserInfo(userInfo);
+      setIsAuthenticated(true);
+      toast.success("Login successful");
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error("An error occurred during login. Please try again.");
+      return false;
+    }
   };
 
   const logout = () => {
+    // Clear stored data
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('userInfo');
+    
+    // Reset state
     setIsAuthenticated(false);
     setUserInfo(null);
     setEthicsAgreed(false);
@@ -138,6 +97,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const agreeToEthics = () => {
     setEthicsAgreed(true);
   };
+
+  // Check for existing session on mount
+  React.useEffect(() => {
+    const storedToken = localStorage.getItem('access_token');
+    const storedUserInfo = localStorage.getItem('userInfo');
+    
+    if (storedToken && storedUserInfo) {
+      try {
+        const userInfo = JSON.parse(storedUserInfo);
+        setUserInfo(userInfo);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Error parsing stored user info:', error);
+        logout();
+      }
+    }
+  }, []);
 
   return (
     <AuthContext.Provider value={{ 

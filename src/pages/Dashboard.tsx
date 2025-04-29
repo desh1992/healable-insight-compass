@@ -1,10 +1,13 @@
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import AppLayout from '@/components/layout/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { AnimatedCard, AnimatedCardContent, AnimatedCardDescription, AnimatedCardHeader, AnimatedCardTitle } from '@/components/ui/animated-card';
+import { AnimatedBadge } from '@/components/ui/animated-badge';
+import { MotionWrapper } from '@/components/ui/motion-wrapper';
+import { motion } from 'framer-motion';
 
 interface PatientCardProps {
   id: string;
@@ -14,10 +17,11 @@ interface PatientCardProps {
   lastVisit: string;
   riskLevel: 'low' | 'medium' | 'high';
   onClick: () => void;
+  delay?: number;
 }
 
 const PatientCard: React.FC<PatientCardProps> = ({ 
-  name, age, condition, lastVisit, riskLevel, onClick 
+  name, age, condition, lastVisit, riskLevel, onClick, delay = 0
 }) => {
   const riskColors = {
     low: 'bg-green-100 text-green-800',
@@ -26,20 +30,28 @@ const PatientCard: React.FC<PatientCardProps> = ({
   };
   
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
-      <CardHeader className="p-4 pb-2">
-        <CardTitle className="text-lg">{name}</CardTitle>
-        <CardDescription>Age {age} • {condition}</CardDescription>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
+    <AnimatedCard 
+      variant="hover" 
+      className="overflow-hidden cursor-pointer" 
+      onClick={onClick}
+      delay={delay}
+    >
+      <AnimatedCardHeader className="p-4 pb-2">
+        <AnimatedCardTitle className="text-lg">{name}</AnimatedCardTitle>
+        <AnimatedCardDescription>Age {age} • {condition}</AnimatedCardDescription>
+      </AnimatedCardHeader>
+      <AnimatedCardContent className="p-4 pt-0">
         <div className="flex justify-between items-center mt-2">
           <span className="text-sm text-muted-foreground">Last visit: {lastVisit}</span>
-          <span className={`text-xs px-2 py-1 rounded-full font-medium ${riskColors[riskLevel]}`}>
+          <AnimatedBadge 
+            animation={riskLevel === 'high' ? 'pulse' : 'none'} 
+            className={`text-xs px-2 py-1 rounded-full font-medium ${riskColors[riskLevel]}`}
+          >
             {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk
-          </span>
+          </AnimatedBadge>
         </div>
-      </CardContent>
-    </Card>
+      </AnimatedCardContent>
+    </AnimatedCard>
   );
 };
 
@@ -62,59 +74,88 @@ const Dashboard: React.FC = () => {
   return (
     <AppLayout title="Clinical Dashboard">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-healable-secondary">
-            Welcome, {userInfo?.name}
-          </h2>
-          <Button className="bg-healable-primary hover:bg-healable-secondary transition-colors">
-            New Patient
-          </Button>
-        </div>
+        <MotionWrapper variant="fadeUp">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-healable-secondary">
+              Welcome, {userInfo?.name}
+            </h2>
+            <motion.div 
+              whileHover={{ scale: 1.05 }} 
+              whileTap={{ scale: 0.95 }}
+            >
+              <Button className="bg-healable-primary hover:bg-healable-secondary transition-colors">
+                New Patient
+              </Button>
+            </motion.div>
+          </div>
+        </MotionWrapper>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Today's Appointments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-healable-primary">6</div>
+        <MotionWrapper variant="stagger" className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <AnimatedCard delay={0.1}>
+            <AnimatedCardHeader className="pb-2">
+              <AnimatedCardTitle className="text-lg">Today's Appointments</AnimatedCardTitle>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
+              <motion.div 
+                className="text-3xl font-bold text-healable-primary"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+              >
+                6
+              </motion.div>
               <p className="text-muted-foreground">2 with care gaps</p>
-            </CardContent>
-          </Card>
+            </AnimatedCardContent>
+          </AnimatedCard>
           
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Care Gap Alerts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-healable-warning">12</div>
+          <AnimatedCard delay={0.2}>
+            <AnimatedCardHeader className="pb-2">
+              <AnimatedCardTitle className="text-lg">Care Gap Alerts</AnimatedCardTitle>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
+              <motion.div 
+                className="text-3xl font-bold text-healable-warning"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+              >
+                12
+              </motion.div>
               <p className="text-muted-foreground">5 high priority</p>
-            </CardContent>
-          </Card>
+            </AnimatedCardContent>
+          </AnimatedCard>
           
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Pending Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-healable-danger">8</div>
+          <AnimatedCard delay={0.3}>
+            <AnimatedCardHeader className="pb-2">
+              <AnimatedCardTitle className="text-lg">Pending Actions</AnimatedCardTitle>
+            </AnimatedCardHeader>
+            <AnimatedCardContent>
+              <motion.div 
+                className="text-3xl font-bold text-healable-danger"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+              >
+                8
+              </motion.div>
               <p className="text-muted-foreground">3 medication reviews</p>
-            </CardContent>
-          </Card>
-        </div>
+            </AnimatedCardContent>
+          </AnimatedCard>
+        </MotionWrapper>
         
-        <div>
+        <MotionWrapper variant="fadeUp" delay={0.4}>
           <h2 className="text-xl font-semibold mb-4 text-healable-secondary">Recent Patients</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {recentPatients.map((patient) => (
+            {recentPatients.map((patient, index) => (
               <PatientCard 
                 key={patient.id}
                 {...patient}
                 onClick={() => handlePatientClick(patient.id)}
+                delay={0.1 * index}
               />
             ))}
           </div>
-        </div>
+        </MotionWrapper>
       </div>
     </AppLayout>
   );

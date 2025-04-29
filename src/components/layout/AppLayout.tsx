@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import HealableLogo from '@/components/HealableLogo';
-import { motion } from 'framer-motion';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -27,8 +26,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full overflow-hidden">
         <Sidebar className="border-r">
-          <SidebarHeader className="p-4 flex items-center justify-center">
-            <HealableLogo size="sm" withText={false} animateOnHover className="mb-1" />
+          <SidebarHeader className="p-4 flex items-center">
+            <HealableLogo size="sm" />
           </SidebarHeader>
           <SidebarContent>
             <nav className="px-4 py-2">
@@ -74,16 +73,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
           <header className="h-16 border-b flex items-center justify-between px-6">
             <div className="flex items-center">
               <SidebarTrigger />
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <h1 className="text-xl font-bold text-healable-secondary ml-4">{title}</h1>
-              </motion.div>
-            </div>
-            <div>
-              <HealableLogo size="sm" withText animateOnHover />
+              <h1 className="text-xl font-bold text-healable-secondary ml-4">{title}</h1>
             </div>
           </header>
           <main className="flex-1 overflow-auto p-6">

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -16,10 +15,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Lock, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MotionWrapper } from '@/components/ui/motion-wrapper';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { UserRole } from '@/contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('physician');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -30,7 +38,7 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password);
+      const success = await login(email, password, role);
       if (success) {
         navigate('/ethics-agreement');
       }
@@ -121,6 +129,21 @@ const LoginPage: React.FC = () => {
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="physician">Physician</SelectItem>
+                      <SelectItem value="caseManager">Case Manager</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="analyst">Analyst</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <motion.div

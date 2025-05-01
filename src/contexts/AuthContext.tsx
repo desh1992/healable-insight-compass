@@ -21,7 +21,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   userInfo: UserInfo | null;
   ethicsAgreed: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
   agreeToEthics: () => void;
 }
@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [ethicsAgreed, setEthicsAgreed] = useState(false);
   const navigate = useNavigate();
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
     try {
       const response = await fetch('https://healable-insights-backend-f8567b9c5516.herokuapp.com/api/auth/login', {
         method: 'POST',
@@ -45,6 +45,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         body: JSON.stringify({
           email,
           password,
+          role,
         }),
       });
 

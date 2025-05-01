@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -45,7 +44,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
                   <Button 
                     variant="ghost" 
                     className="w-full justify-start"
-                    onClick={() => navigate('/patient/1')}
+                    onClick={() => navigate('/patients')}
                   >
                     Patient Records
                   </Button>

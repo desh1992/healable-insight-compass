@@ -1,4 +1,3 @@
-
 // This is a mock service for demo purposes
 
 export interface PatientData {
@@ -225,7 +224,7 @@ const MOCK_PATIENTS: Record<string, PatientData> = {
       { type: 'Screening', description: 'Allergy testing recommended', dueDate: '2023-07-15', priority: 'low' }
     ],
     notes: [
-      { date: '2023-03-15', provider: 'Dr. James Miller', content: 'Patient's asthma well-controlled. No exacerbations in past 6 months. Seasonal allergies starting to affect symptoms. Adjusted medication regimen for spring season.' },
+      { date: '2023-03-15', provider: 'Dr. James Miller', content: 'Patient\'s asthma well-controlled. No exacerbations in past 6 months. Seasonal allergies starting to affect symptoms. Adjusted medication regimen for spring season.' },
       { date: '2022-09-20', provider: 'Dr. James Miller', content: 'Patient recovered from bronchitis. Resumed normal asthma medication regimen. Discussed importance of flu vaccination.' }
     ],
     riskFactors: [

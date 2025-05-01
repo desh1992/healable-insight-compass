@@ -8,13 +8,13 @@ interface EthicsAgreementRouteProps {
 }
 
 const EthicsAgreementRoute = ({ children }: EthicsAgreementRouteProps) => {
-  const { isAuthenticated, ethicsAgreed } = useAuth();
+  const { isAuthenticated, hasAcceptedEthics } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!ethicsAgreed) {
+  if (!hasAcceptedEthics) {
     return <Navigate to="/ethics-agreement" replace />;
   }
 

@@ -8,10 +8,10 @@ import HealableLogo from '@/components/HealableLogo';
 
 const EthicsAgreement: React.FC = () => {
   const navigate = useNavigate();
-  const { agreeToEthics } = useAuth();
+  const { acceptEthics } = useAuth();
   
   const handleAgree = () => {
-    agreeToEthics();
+    acceptEthics();
     navigate('/dashboard');
   };
 

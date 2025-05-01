@@ -11,17 +11,27 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import HealableLogo from '@/components/HealableLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff, Lock, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MotionWrapper } from '@/components/ui/motion-wrapper';
 
+const roles = [
+  { id: 'physician', label: 'Physician' },
+  { id: 'case-manager', label: 'Case Manager' },
+  { id: 'administrator', label: 'Administrator' },
+  { id: 'analyst', label: 'Operations/Analyst' }
+];
+
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState('physician');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -30,13 +40,24 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password);
+      // Pass the selected role to the login function
+      const success = await login(email, password, selectedRole);
       if (success) {
         navigate('/ethics-agreement');
       }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleNextStep = () => {
+    if (email.trim()) {
+      setCurrentStep(1);
+    }
+  };
+
+  const handleBackStep = () => {
+    setCurrentStep(0);
   };
 
   return (
@@ -79,62 +100,125 @@ const LoginPage: React.FC = () => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                      <User size={16} />
+                {currentStep === 0 ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                          <User size={16} />
+                        </div>
+                        <Input
+                          id="email"
+                          placeholder="Enter your email"
+                          type="email"
+                          className="pl-10"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
                     </div>
-                    <Input
-                      id="email"
-                      placeholder="Enter your email"
-                      type="email"
-                      className="pl-10"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                      <Lock size={16} />
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Select Your Role</Label>
+                      <RadioGroup 
+                        value={selectedRole} 
+                        onValueChange={setSelectedRole}
+                        className="grid grid-cols-2 gap-2 pt-1"
+                      >
+                        {roles.map((role) => (
+                          <motion.div 
+                            key={role.id}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <Label
+                              htmlFor={role.id}
+                              className={`flex items-center justify-center p-3 rounded-md border border-gray-200 cursor-pointer transition-all ${
+                                selectedRole === role.id 
+                                  ? 'bg-healable-primary text-white border-healable-primary' 
+                                  : 'hover:bg-gray-100'
+                              }`}
+                            >
+                              <RadioGroupItem 
+                                value={role.id} 
+                                id={role.id} 
+                                className="sr-only" 
+                              />
+                              {role.label}
+                            </Label>
+                          </motion.div>
+                        ))}
+                      </RadioGroup>
                     </div>
-                    <Input
-                      id="password"
-                      placeholder="Enter your password"
-                      type={showPassword ? "text" : "password"}
-                      className="pl-10 pr-10"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <button 
-                      type="button"
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-                
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-healable-primary hover:bg-healable-secondary transition-colors"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </motion.div>
+                      <Button 
+                        type="button" 
+                        className="w-full bg-healable-primary hover:bg-healable-secondary transition-colors"
+                        onClick={handleNextStep}
+                      >
+                        Next
+                      </Button>
+                    </motion.div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="password">Password</Label>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs text-healable-primary"
+                          onClick={handleBackStep}
+                        >
+                          Change Email/Role
+                        </Button>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                          <Lock size={16} />
+                        </div>
+                        <Input
+                          id="password"
+                          placeholder="Enter your password"
+                          type={showPassword ? "text" : "password"}
+                          className="pl-10 pr-10"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                        />
+                        <button 
+                          type="button"
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-healable-primary hover:bg-healable-secondary transition-colors"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? "Signing in..." : "Sign In"}
+                      </Button>
+                    </motion.div>
+                  </>
+                )}
               </motion.form>
             </CardContent>
           </Card>

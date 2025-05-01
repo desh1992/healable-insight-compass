@@ -1,129 +1,99 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from "@/components/ui/sonner";
 
-// Define the user roles
-export type UserRole = 'physician' | 'caseManager' | 'admin' | 'analyst';
+import React, { createContext, useState, useContext, useEffect } from "react";
 
-// Define user information type
-export interface UserInfo {
-  userId: string;
+interface UserInfo {
   name: string;
-  email: string;
-  role: UserRole;
-  department: string;
-  access_token: string;
-  token_type: string;
+  role: string;
 }
 
-// Define the auth context type
 interface AuthContextType {
   isAuthenticated: boolean;
   userInfo: UserInfo | null;
-  ethicsAgreed: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  hasAcceptedEthics: boolean;
+  login: (email: string, password: string, role?: string) => Promise<boolean>;
   logout: () => void;
-  agreeToEthics: () => void;
+  acceptEthics: () => void;
 }
 
-// Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [ethicsAgreed, setEthicsAgreed] = useState(false);
-  const navigate = useNavigate();
+  const [hasAcceptedEthics, setHasAcceptedEthics] = useState<boolean>(false);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const response = await fetch('https://healable-insights-backend-f8567b9c5516.herokuapp.com/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        toast.error(errorData.detail || "Login failed. Please check your credentials.");
-        return false;
-      }
-
-      const data = await response.json();
-      
-      // Store the user info and token
-      const userInfo: UserInfo = {
-        userId: data.userId,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        department: data.department || '',
-        access_token: data.access_token,
-        token_type: data.token_type,
-      };
-
-      // Store token in localStorage for persistence
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
-
-      setUserInfo(userInfo);
+  useEffect(() => {
+    // Check for existing auth on load
+    const savedAuth = localStorage.getItem("auth");
+    const savedEthics = localStorage.getItem("ethics");
+    
+    if (savedAuth) {
+      const authData = JSON.parse(savedAuth);
       setIsAuthenticated(true);
-      toast.success("Login successful");
-      return true;
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error("An error occurred during login. Please try again.");
-      return false;
+      setUserInfo(authData.userInfo);
     }
-  };
-
-  const logout = () => {
-    // Clear stored data
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('userInfo');
     
-    // Reset state
-    setIsAuthenticated(false);
-    setUserInfo(null);
-    setEthicsAgreed(false);
-    navigate('/login');
-  };
-
-  const agreeToEthics = () => {
-    setEthicsAgreed(true);
-  };
-
-  // Check for existing session on mount
-  React.useEffect(() => {
-    const storedToken = localStorage.getItem('access_token');
-    const storedUserInfo = localStorage.getItem('userInfo');
-    
-    if (storedToken && storedUserInfo) {
-      try {
-        const userInfo = JSON.parse(storedUserInfo);
-        setUserInfo(userInfo);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing stored user info:', error);
-        logout();
-      }
+    if (savedEthics === "true") {
+      setHasAcceptedEthics(true);
     }
   }, []);
 
+  const login = async (email: string, password: string, role?: string): Promise<boolean> => {
+    // This would normally call an API endpoint
+    // Mock login for demo purposes
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Hard-coded test credentials
+        if (email && password) {
+          // Create user info based on email and role
+          const userInfo = {
+            name: email.split('@')[0].split('.').map(part => 
+              part.charAt(0).toUpperCase() + part.slice(1)
+            ).join(' '),
+            role: role || "Physician" // Default to Physician if no role is selected
+          };
+          
+          setIsAuthenticated(true);
+          setUserInfo(userInfo);
+          
+          // Save to localStorage
+          localStorage.setItem("auth", JSON.stringify({
+            isAuthenticated: true,
+            userInfo
+          }));
+          
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      }, 1000);
+    });
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    setUserInfo(null);
+    setHasAcceptedEthics(false);
+    localStorage.removeItem("auth");
+    localStorage.removeItem("ethics");
+  };
+
+  const acceptEthics = () => {
+    setHasAcceptedEthics(true);
+    localStorage.setItem("ethics", "true");
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated, 
-      userInfo, 
-      ethicsAgreed,
-      login, 
-      logout, 
-      agreeToEthics 
-    }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        userInfo,
+        hasAcceptedEthics,
+        login,
+        logout,
+        acceptEthics,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -132,7 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

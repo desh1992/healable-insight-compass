@@ -53,9 +53,9 @@ AnimatedCard.displayName = "AnimatedCard";
 
 const AnimatedCardHeader = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLMotionProps<"div">
 >(({ className, ...props }, ref) => (
-  <div
+  <motion.div
     ref={ref}
     className={cn("flex flex-col space-y-1.5 p-6", className)}
     {...props}
@@ -65,9 +65,9 @@ AnimatedCardHeader.displayName = "AnimatedCardHeader";
 
 const AnimatedCardTitle = React.forwardRef<
   HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
+  HTMLMotionProps<"h3">
 >(({ className, ...props }, ref) => (
-  <h3
+  <motion.h3
     ref={ref}
     className={cn(
       "text-2xl font-semibold leading-none tracking-tight",
@@ -80,9 +80,9 @@ AnimatedCardTitle.displayName = "AnimatedCardTitle";
 
 const AnimatedCardDescription = React.forwardRef<
   HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
+  HTMLMotionProps<"p">
 >(({ className, ...props }, ref) => (
-  <p
+  <motion.p
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
@@ -92,17 +92,17 @@ AnimatedCardDescription.displayName = "AnimatedCardDescription";
 
 const AnimatedCardContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLMotionProps<"div">
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+  <motion.div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
 ));
 AnimatedCardContent.displayName = "AnimatedCardContent";
 
 const AnimatedCardFooter = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLMotionProps<"div">
 >(({ className, ...props }, ref) => (
-  <div
+  <motion.div
     ref={ref}
     className={cn("flex items-center p-6 pt-0", className)}
     {...props}

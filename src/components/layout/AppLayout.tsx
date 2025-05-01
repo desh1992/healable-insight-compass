@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import HealableLogo from '@/components/HealableLogo';
-import { motion } from 'framer-motion';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -28,13 +27,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
       <div className="min-h-screen flex w-full overflow-hidden">
         <Sidebar className="border-r">
           <SidebarHeader className="p-4 flex items-center">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <HealableLogo size="sm" />
-            </motion.div>
+            <HealableLogo size="sm" />
           </SidebarHeader>
           <SidebarContent>
             <nav className="px-4 py-2">
@@ -63,26 +56,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
           <SidebarFooter className="p-4 border-t">
             <div className="flex flex-col gap-2">
               <div className="flex items-center space-x-2">
-                <motion.div 
-                  className="w-8 h-8 rounded-full bg-healable-primary text-white flex items-center justify-center font-medium"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
+                <div className="w-8 h-8 rounded-full bg-healable-primary text-white flex items-center justify-center font-medium">
                   {userInfo?.name.charAt(0)}
-                </motion.div>
+                </div>
                 <div>
                   <p className="text-sm font-medium">{userInfo?.name}</p>
                   <p className="text-xs text-muted-foreground capitalize">{userInfo?.role}</p>
                 </div>
               </div>
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Button variant="outline" size="sm" onClick={logout} className="w-full">
-                  Log out
-                </Button>
-              </motion.div>
+              <Button variant="outline" size="sm" onClick={logout}>Log out</Button>
             </div>
           </SidebarFooter>
         </Sidebar>
@@ -91,14 +73,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
           <header className="h-16 border-b flex items-center justify-between px-6">
             <div className="flex items-center">
               <SidebarTrigger />
-              <motion.h1 
-                className="text-xl font-bold text-healable-secondary ml-4"
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                {title}
-              </motion.h1>
+              <h1 className="text-xl font-bold text-healable-secondary ml-4">{title}</h1>
             </div>
           </header>
           <main className="flex-1 overflow-auto p-6">

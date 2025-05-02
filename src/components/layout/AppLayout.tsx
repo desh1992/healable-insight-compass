@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import HealableLogo from '@/components/HealableLogo';
+import { UserPlus, LayoutDashboard, Users, Mic } from 'lucide-react';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -37,6 +38,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
                     className="w-full justify-start"
                     onClick={() => navigate('/dashboard')}
                   >
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
                     Dashboard
                   </Button>
                 </li>
@@ -46,7 +48,28 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
                     className="w-full justify-start"
                     onClick={() => navigate('/patients')}
                   >
+                    <Users className="mr-2 h-4 w-4" />
                     Patient Records
+                  </Button>
+                </li>
+                <li>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start text-healable-primary hover:text-healable-secondary"
+                    onClick={() => navigate('/new-patient')}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    New Patient
+                  </Button>
+                </li>
+                <li>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start"
+                    onClick={() => navigate('/live-note-capture')}
+                  >
+                    <Mic className="mr-2 h-4 w-4" />
+                    Live Note Capture
                   </Button>
                 </li>
               </ul>

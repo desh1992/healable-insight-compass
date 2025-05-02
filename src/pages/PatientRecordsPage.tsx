@@ -1,53 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AppLayout from '@/components/layout/AppLayout';
 import { Input } from "@/components/ui/input";
 import { Search } from 'lucide-react';
-import AppLayout from '@/components/layout/AppLayout';
-
-interface Patient {
-  id: string;
-  name: string;
-  age: number;
-  condition: string;
-  lastVisit: string;
-  riskLevel?: 'Low Risk' | 'Medium Risk' | 'High Risk';
-}
-
-const mockPatients: Patient[] = [
-  { id: '1', name: 'James Wilson', age: 67, condition: 'Hypertension, Diabetes', lastVisit: '3 days ago', riskLevel: 'High Risk' },
-  { id: '2', name: 'Maria Garcia', age: 54, condition: 'COPD', lastVisit: '1 week ago', riskLevel: 'Medium Risk' },
-  { id: '3', name: 'Robert Chen', age: 71, condition: 'Heart Failure', lastVisit: '2 weeks ago', riskLevel: 'Medium Risk' },
-  { id: '4', name: 'Sarah Johnson', age: 42, condition: 'Asthma', lastVisit: '1 month ago', riskLevel: 'Low Risk' },
-];
+import { getAllPatients } from '@/services/patientService';
+import { PatientData } from '@/types/patient';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MotionWrapper } from '@/components/ui/motion-wrapper';
+import { Link } from 'react-router-dom';
 
 const PatientRecordsPage: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [patients, setPatients] = useState<PatientData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredPatients = mockPatients.filter(patient =>
+  useEffect(() => {
+    const loadPatients = async () => {
+      try {
+        const allPatients = await getAllPatients();
+        setPatients(allPatients);
+      } catch (error) {
+        console.error('Error loading patients:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPatients();
+  }, []);
+
+  const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handlePatientClick = (patientId: string) => {
-    navigate(`/patient/${patientId}`);
-  };
-
-  const getRiskLevelColor = (riskLevel?: string) => {
-    switch (riskLevel) {
-      case 'High Risk':
-        return 'text-red-600 bg-red-50';
-      case 'Medium Risk':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'Low Risk':
-        return 'text-green-600 bg-green-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
+  const getRiskBadgeStyle = (riskFactors: Array<{ level: string }> = []) => {
+    if (!Array.isArray(riskFactors) || riskFactors.length === 0) {
+      return 'bg-gray-100 text-gray-800';
     }
+    
+    if (riskFactors.some(risk => risk.level === 'high')) {
+      return 'bg-red-100 text-red-800';
+    }
+    if (riskFactors.some(risk => risk.level === 'medium')) {
+      return 'bg-amber-100 text-amber-800';
+    }
+    return 'bg-green-100 text-green-800';
   };
 
-  const content = (
-    <div>
-      <div className="mb-8">
+  const getRiskLevel = (riskFactors: Array<{ level: string }> = []) => {
+    if (!Array.isArray(riskFactors) || riskFactors.length === 0) {
+      return 'Low Risk';
+    }
+    
+    if (riskFactors.some(r => r.level === 'high')) {
+      return 'High Risk';
+    }
+    if (riskFactors.some(r => r.level === 'medium')) {
+      return 'Medium Risk';
+    }
+    return 'Low Risk';
+  };
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Patient Records">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-healable-primary mx-auto"></div>
+            <p className="mt-4 text-healable-secondary">Loading patients...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout title="Patient Records">
+      <div className="space-y-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <Input
@@ -58,44 +89,33 @@ const PatientRecordsPage: React.FC = () => {
             className="pl-10 w-full"
           />
         </div>
-      </div>
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="divide-y divide-gray-200">
-          {filteredPatients.map((patient) => (
-            <div
-              key={patient.id}
-              className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-              onClick={() => handlePatientClick(patient.id)}
+        <MotionWrapper variant="fadeUp" className="space-y-4">
+          {filteredPatients.map((patient, index) => (
+            <Link 
+              key={patient.id} 
+              to={`/patient/${patient.id}`}
+              className="block"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">{patient.name}</h3>
-                  <div className="mt-1 text-sm text-gray-500">
-                    <span>Age {patient.age}</span>
-                    <span className="mx-2">•</span>
-                    <span>{patient.condition}</span>
+              <Card className="hover:bg-gray-50 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium">{patient.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Age {patient.age} • {patient.primaryCondition}
+                      </p>
+                    </div>
+                    <Badge className={getRiskBadgeStyle(patient.riskFactors || [])}>
+                      {getRiskLevel(patient.riskFactors || [])}
+                    </Badge>
                   </div>
-                  <div className="mt-1 text-sm text-gray-500">
-                    Last visit: {patient.lastVisit}
-                  </div>
-                </div>
-                {patient.riskLevel && (
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getRiskLevelColor(patient.riskLevel)}`}>
-                    {patient.riskLevel}
-                  </span>
-                )}
-              </div>
-            </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
-        </div>
+        </MotionWrapper>
       </div>
-    </div>
-  );
-
-  return (
-    <AppLayout title="Patient Records">
-      {content}
     </AppLayout>
   );
 };

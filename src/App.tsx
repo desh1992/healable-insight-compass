@@ -1,58 +1,51 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { AuthProvider } from '@/contexts/AuthContext';
+import AuthGuard from '@/components/guards/AuthGuard';
+import EthicsAgreementRoute from '@/components/EthicsAgreementRoute';
 
-import { AuthProvider } from "@/contexts/AuthContext";
-import PrivateRoute from "./components/PrivateRoute";
-import EthicsAgreementRoute from "./components/EthicsAgreementRoute";
-
-import LoginPage from "./pages/LoginPage";
-import EthicsAgreement from "./pages/EthicsAgreement";
-import Dashboard from "./pages/Dashboard";
-import PatientRecord from "./pages/PatientRecord";
-import PatientRecordsPage from "./pages/PatientRecordsPage";
-import NotFound from "./pages/NotFound";
+// Pages
+import Dashboard from '@/pages/Dashboard';
+import PatientRecordsPage from '@/pages/PatientRecordsPage';
+import PatientRecord from '@/pages/PatientRecord';
+import NewPatient from '@/pages/NewPatient';
+import LoginPage from '@/pages/LoginPage';
+import LiveNoteCapturePage from '@/pages/LiveNoteCapturePage';
+import EthicsAgreement from '@/pages/EthicsAgreement';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/ethics-agreement" element={
-              <PrivateRoute>
-                <EthicsAgreement />
-              </PrivateRoute>
-            } />
-            <Route path="/dashboard" element={
-              <EthicsAgreementRoute>
-                <Dashboard />
-              </EthicsAgreementRoute>
-            } />
-            <Route path="/patients" element={
-              <EthicsAgreementRoute>
-                <PatientRecordsPage />
-              </EthicsAgreementRoute>
-            } />
-            <Route path="/patient/:patientId" element={
-              <EthicsAgreementRoute>
-                <PatientRecord />
-              </EthicsAgreementRoute>
-            } />
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              
+              <Route element={<AuthGuard />}>
+                {/* Ethics Agreement Page */}
+                <Route path="/ethics-agreement" element={<EthicsAgreement />} />
+                
+                {/* Protected Routes (require both auth and ethics agreement) */}
+                <Route element={<EthicsAgreementRoute />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/patients" element={<PatientRecordsPage />} />
+                  <Route path="/patient/:patientId" element={<PatientRecord />} />
+                  <Route path="/new-patient" element={<NewPatient />} />
+                  <Route path="/live-note-capture" element={<LiveNoteCapturePage />} />
+                </Route>
+              </Route>
+              
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

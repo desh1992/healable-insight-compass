@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
@@ -10,9 +9,50 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import AddNoteModal from '@/components/AddNoteModal';
+import NotesTab from '@/components/NotesTab';
+import LiveNoteCapture from '@/components/LiveNoteCapture';
+import { FileText, Mic } from 'lucide-react';
+import { formatDateTime, formatDate } from '@/utils/dateFormat';
+import { Note } from '@/types/notes';
+import { saveNote } from '@/utils/storage';
+
+// Add type definitions at the top
+interface RiskFactor {
+  factor: string;
+  level: 'low' | 'medium' | 'high';
+  trend: 'improving' | 'stable' | 'worsening';
+}
+
+interface PatientVitalSigns {
+  bloodPressure?: string;
+  heartRate?: string | number;
+  respiratoryRate?: string | number;
+  temperature?: string | number;
+  oxygenSaturation?: string | number;
+  lastUpdated?: string;
+}
+
+interface PatientSummaryProps {
+  patient: {
+    name?: string;
+    age?: number;
+    dob?: string;
+    gender?: string;
+    contact?: string;
+    insurance?: string;
+    vitalSigns?: PatientVitalSigns;
+    conditions?: string[];
+    riskFactors?: RiskFactor[];
+  };
+}
 
 // AI Query component
-const AIQuerySection: React.FC = () => {
+const AIQuerySection: React.FC<{
+  setAiResponseContent: (content: string) => void;
+  setIsAddNoteModalOpen: (isOpen: boolean) => void;
+  patientId: string;
+}> = ({ setAiResponseContent, setIsAddNoteModalOpen, patientId }) => {
   const [query, setQuery] = useState('');
   const [isQuerying, setIsQuerying] = useState(false);
   const [aiResponse, setAIResponse] = useState<string | null>(null);
@@ -56,15 +96,28 @@ const AIQuerySection: React.FC = () => {
     }, 1500);
   };
   
+  const handleCopyToNote = (content: string) => {
+    const note: Note = {
+      id: `note-${Date.now()}`,
+      patientId,
+      content: content.trim(),
+      timestamp: new Date().toISOString(),
+      type: 'ai_generated'
+    };
+    
+    saveNote(note);
+    toast.success('Note saved successfully');
+  };
+
   return (
     <div className="mt-6 space-y-4">
       <div className="flex flex-col gap-4">
-        <div className="relative">
+        <div className="relative flex items-center">
           <Input
             placeholder="Ask a question about this patient..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="pr-24"
+            className="pr-28"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && query.trim()) {
                 handleQuerySubmit(query);
@@ -72,7 +125,7 @@ const AIQuerySection: React.FC = () => {
             }}
           />
           <Button 
-            className="absolute right-1 top-1 bottom-1 bg-healable-primary hover:bg-healable-secondary"
+            className="absolute right-1 h-[calc(100%-8px)] px-6 bg-healable-primary hover:bg-healable-secondary rounded-md"
             disabled={isQuerying || !query.trim()}
             onClick={() => handleQuerySubmit(query)}
           >
@@ -123,7 +176,7 @@ const AIQuerySection: React.FC = () => {
               {aiResponse}
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" size="sm">Copy to Note</Button>
+              <Button variant="outline" size="sm" onClick={() => handleCopyToNote(aiResponse)}>Copy to Note</Button>
               <Button variant="outline" size="sm" className="text-healable-danger">
                 Report Issue
               </Button>
@@ -131,22 +184,12 @@ const AIQuerySection: React.FC = () => {
           </CardContent>
         </Card>
       )}
-      
-      <div className="flex justify-between items-center mt-6">
-        <h3 className="text-lg font-medium">Live Note Capture</h3>
-        <Button 
-          className="bg-healable-primary hover:bg-healable-secondary transition-colors"
-          onClick={() => toast.success("Note capture started")}
-        >
-          Start Recording
-        </Button>
-      </div>
     </div>
   );
 };
 
-// Patient Summary component
-const PatientSummary: React.FC<{ patient: any }> = ({ patient }) => {
+// Update the PatientSummary component
+const PatientSummary: React.FC<PatientSummaryProps> = ({ patient }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card>
@@ -178,29 +221,29 @@ const PatientSummary: React.FC<{ patient: any }> = ({ patient }) => {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Latest Vital Signs</CardTitle>
-          <CardDescription>{patient.vitalSigns.lastUpdated}</CardDescription>
+          <CardDescription>{patient.vitalSigns?.lastUpdated || 'No data available'}</CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="space-y-2">
             <div className="flex justify-between">
               <dt className="font-medium text-muted-foreground">Blood Pressure:</dt>
-              <dd className="text-healable-danger">{patient.vitalSigns.bloodPressure}</dd>
+              <dd className="text-healable-danger">{patient.vitalSigns?.bloodPressure || 'N/A'}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="font-medium text-muted-foreground">Heart Rate:</dt>
-              <dd>{patient.vitalSigns.heartRate} bpm</dd>
+              <dd>{patient.vitalSigns?.heartRate ? `${patient.vitalSigns.heartRate} bpm` : 'N/A'}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="font-medium text-muted-foreground">Respiratory Rate:</dt>
-              <dd>{patient.vitalSigns.respiratoryRate} br/min</dd>
+              <dd>{patient.vitalSigns?.respiratoryRate ? `${patient.vitalSigns.respiratoryRate} br/min` : 'N/A'}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="font-medium text-muted-foreground">Temperature:</dt>
-              <dd>{patient.vitalSigns.temperature}°F</dd>
+              <dd>{patient.vitalSigns?.temperature ? `${patient.vitalSigns.temperature}°F` : 'N/A'}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="font-medium text-muted-foreground">O2 Saturation:</dt>
-              <dd>{patient.vitalSigns.oxygenSaturation}%</dd>
+              <dd>{patient.vitalSigns?.oxygenSaturation ? `${patient.vitalSigns.oxygenSaturation}%` : 'N/A'}</dd>
             </div>
           </dl>
         </CardContent>
@@ -212,16 +255,16 @@ const PatientSummary: React.FC<{ patient: any }> = ({ patient }) => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {patient.conditions.map((condition: string, idx: number) => (
+            {patient.conditions?.map((condition: string, idx: number) => (
               <Badge key={idx} variant="outline" className="bg-healable-light">
                 {condition}
               </Badge>
-            ))}
+            )) || <span className="text-muted-foreground">No conditions recorded</span>}
           </div>
           <div className="mt-4">
             <h4 className="text-sm font-semibold mb-2">Key Risk Factors</h4>
             <div className="space-y-2">
-              {patient.riskFactors.map((risk: any, idx: number) => {
+              {(patient.riskFactors || []).map((risk: RiskFactor, idx: number) => {
                 const levelColors = {
                   low: "text-green-600 bg-green-50",
                   medium: "text-amber-600 bg-amber-50",
@@ -242,6 +285,9 @@ const PatientSummary: React.FC<{ patient: any }> = ({ patient }) => {
                   </div>
                 );
               })}
+              {(!patient.riskFactors || patient.riskFactors.length === 0) && (
+                <div className="text-muted-foreground">No risk factors recorded</div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -253,6 +299,9 @@ const PatientSummary: React.FC<{ patient: any }> = ({ patient }) => {
 // Main Patient Record component
 const PatientRecord: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
+  const [isAddNoteModalOpen, setIsAddNoteModalOpen] = useState(false);
+  const [isLiveNoteCaptureOpen, setIsLiveNoteCaptureOpen] = useState(false);
+  const [aiResponseContent, setAiResponseContent] = useState<string>('');
   
   const { data: patient, isLoading, error } = useQuery({
     queryKey: ['patient', patientId],
@@ -296,32 +345,43 @@ const PatientRecord: React.FC = () => {
               {patient.name}
             </h1>
             <div className="text-muted-foreground">
-              Last Visit: {patient.lastVisit}
+              Last Visit: {formatDate(patient.lastVisit)}
             </div>
           </div>
           
           <div className="flex gap-2">
             <Button variant="outline">Patient History</Button>
-            <Button className="bg-healable-primary hover:bg-healable-secondary">
+            <Button 
+              className="bg-healable-primary hover:bg-healable-secondary"
+              onClick={() => setIsAddNoteModalOpen(true)}
+            >
               Add Note
             </Button>
           </div>
         </div>
-        
-        <Tabs defaultValue="ai">
+
+        <Tabs defaultValue="ai_assistant">
           <TabsList>
-            <TabsTrigger value="ai">AI Assistant</TabsTrigger>
-            <TabsTrigger value="summary">Patient Summary</TabsTrigger>
+            <TabsTrigger value="ai_assistant">AI Assistant</TabsTrigger>
+            <TabsTrigger value="patient_summary">Patient Summary</TabsTrigger>
             <TabsTrigger value="medications">Medications</TabsTrigger>
-            <TabsTrigger value="labs">Lab Results</TabsTrigger>
-            <TabsTrigger value="care-gaps">Care Gaps</TabsTrigger>
+            <TabsTrigger value="lab_results">Lab Results</TabsTrigger>
+            <TabsTrigger value="care_gaps">Care Gaps</TabsTrigger>
+            <TabsTrigger value="notes">Notes</TabsTrigger>
           </TabsList>
-          <TabsContent value="ai" className="space-y-4">
-            <AIQuerySection />
+
+          <TabsContent value="ai_assistant">
+            <AIQuerySection
+              setAiResponseContent={setAiResponseContent}
+              setIsAddNoteModalOpen={setIsAddNoteModalOpen}
+              patientId={patientId || ''}
+            />
           </TabsContent>
-          <TabsContent value="summary">
+
+          <TabsContent value="patient_summary">
             <PatientSummary patient={patient} />
           </TabsContent>
+
           <TabsContent value="medications">
             <Card>
               <CardHeader>
@@ -329,7 +389,7 @@ const PatientRecord: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {patient.medications.map((med: any, idx: number) => (
+                  {patient.medications?.map((med: any, idx: number) => (
                     <div key={idx} className="border rounded-md p-4">
                       <div className="font-medium">{med.name}</div>
                       <div className="text-sm text-muted-foreground">
@@ -356,14 +416,15 @@ const PatientRecord: React.FC = () => {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="labs">
+
+          <TabsContent value="lab_results">
             <Card>
               <CardHeader>
                 <CardTitle>Lab Results</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {patient.labResults.map((lab: any, idx: number) => {
+                  {patient.labResults?.map((lab: any, idx: number) => {
                     const statusColors = {
                       normal: 'bg-green-100 text-green-800',
                       abnormal: 'bg-amber-100 text-amber-800',
@@ -390,14 +451,15 @@ const PatientRecord: React.FC = () => {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="care-gaps">
+
+          <TabsContent value="care_gaps">
             <Card>
               <CardHeader>
                 <CardTitle>Care Gaps</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {patient.careGaps.map((gap: any, idx: number) => {
+                  {patient.careGaps?.map((gap: any, idx: number) => {
                     const priorityColors = {
                       low: 'border-l-green-500',
                       medium: 'border-l-amber-500',
@@ -418,7 +480,28 @@ const PatientRecord: React.FC = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="notes">
+            <NotesTab patientId={patientId} />
+          </TabsContent>
         </Tabs>
+
+        <AddNoteModal
+          isOpen={isAddNoteModalOpen}
+          onClose={() => {
+            setIsAddNoteModalOpen(false);
+            setAiResponseContent('');
+          }}
+          patientId={patientId}
+          initialContent={aiResponseContent}
+          noteType={aiResponseContent ? 'ai_generated' : 'manual'}
+        />
+
+        <LiveNoteCapture
+          isOpen={isLiveNoteCaptureOpen}
+          onClose={() => setIsLiveNoteCaptureOpen(false)}
+          patientId={patientId}
+        />
       </div>
     </AppLayout>
   );

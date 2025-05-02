@@ -23,25 +23,75 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { UserRole } from '@/contexts/AuthContext';
+import { toast } from "@/components/ui/sonner";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('physician');
+  const [role, setRole] = useState<UserRole | ''>('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({
+    email: '',
+    password: '',
+    role: ''
+  });
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateForm = () => {
+    const newErrors = {
+      email: '',
+      password: '',
+      role: ''
+    };
+    let isValid = true;
+
+    if (!email) {
+      newErrors.email = 'Email is required';
+      isValid = false;
+    } else if (!validateEmail(email)) {
+      newErrors.email = 'Please enter a valid email address';
+      isValid = false;
+    }
+
+    if (!password) {
+      newErrors.password = 'Password is required';
+      isValid = false;
+    }
+
+    if (!role) {
+      newErrors.role = 'Please select a role';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      const success = await login(email, password, role);
+      const success = await login(email, password, role as UserRole);
       if (success) {
         navigate('/ethics-agreement');
+      } else {
+        toast.error('Invalid credentials. Please check your email, password, and role.');
       }
+    } catch (error) {
+      toast.error('An error occurred during login. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -86,6 +136,7 @@ const LoginPage: React.FC = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
+                noValidate
               >
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -97,12 +148,27 @@ const LoginPage: React.FC = () => {
                       id="email"
                       placeholder="Enter your email"
                       type="email"
-                      className="pl-10"
+                      className={`pl-10 ${errors.email ? 'border-red-500 focus:border-red-500 ring-red-500 focus:ring-red-500' : ''}`}
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (errors.email) {
+                          setErrors(prev => ({ ...prev, email: '' }));
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!email) {
+                          setErrors(prev => ({ ...prev, email: 'Email is required' }));
+                        } else if (!validateEmail(email)) {
+                          setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+                        }
+                      }}
                       required
                     />
                   </div>
+                  {errors.email && (
+                    <p className="text-sm text-red-500 mt-1">{errors.email}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -115,35 +181,61 @@ const LoginPage: React.FC = () => {
                       id="password"
                       placeholder="Enter your password"
                       type={showPassword ? "text" : "password"}
-                      className="pl-10 pr-10"
+                      className={`pl-10 pr-10 ${errors.password ? 'border-red-500 focus:border-red-500 ring-red-500 focus:ring-red-500' : ''}`}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (errors.password) {
+                          setErrors(prev => ({ ...prev, password: '' }));
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!password) {
+                          setErrors(prev => ({ ...prev, password: 'Password is required' }));
+                        }
+                      }}
                       required
                     />
                     <button 
                       type="button"
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-500"
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {errors.password && (
+                    <p className="text-sm text-red-500 mt-1">{errors.password}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
-                    <SelectTrigger>
+                  <Select 
+                    value={role} 
+                    onValueChange={(value) => {
+                      setRole(value as UserRole);
+                      if (errors.role) {
+                        setErrors(prev => ({ ...prev, role: '' }));
+                      }
+                    }}
+                  >
+                    <SelectTrigger 
+                      className={`${errors.role ? 'border-red-500 focus:border-red-500 ring-red-500 focus:ring-red-500' : ''}`}
+                    >
                       <SelectValue placeholder="Select your role" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="physician">Physician</SelectItem>
                       <SelectItem value="caseManager">Case Manager</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="analyst">Analyst</SelectItem>
+                      <SelectItem value="admin">Administrator</SelectItem>
+                      <SelectItem value="analyst">Operations/Analyst</SelectItem>
                     </SelectContent>
                   </Select>
+                  {errors.role && (
+                    <p className="text-sm text-red-500 mt-1">{errors.role}</p>
+                  )}
                 </div>
                 
                 <motion.div

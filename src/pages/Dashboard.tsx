@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import AppLayout from '@/components/layout/AppLayout';
 import { useNavigate } from 'react-router-dom';
@@ -8,69 +7,149 @@ import { AnimatedCard, AnimatedCardContent, AnimatedCardDescription, AnimatedCar
 import { AnimatedBadge } from '@/components/ui/animated-badge';
 import { MotionWrapper } from '@/components/ui/motion-wrapper';
 import { motion } from 'framer-motion';
+import { Input } from "@/components/ui/input";
+import { Search } from 'lucide-react';
+import { getAllPatients } from '@/services/patientService';
+import { PatientData } from '@/types/patient';
+import { Link } from 'react-router-dom';
+import { Card, CardContent } from "@/components/ui/card";
+import { formatDate } from '@/utils/dateFormat';
+import { Badge } from "@/components/ui/badge";
 
 interface PatientCardProps {
-  id: string;
   name: string;
-  age: number;
-  condition: string;
+  age?: number;
+  primaryCondition?: string;
+  conditions?: string[];
   lastVisit: string;
-  riskLevel: 'low' | 'medium' | 'high';
+  riskFactors?: Array<{ level: 'low' | 'medium' | 'high'; factor: string; trend?: 'improving' | 'stable' | 'worsening' }>;
   onClick: () => void;
   delay?: number;
 }
 
 const PatientCard: React.FC<PatientCardProps> = ({ 
-  name, age, condition, lastVisit, riskLevel, onClick, delay = 0
+  name, 
+  age, 
+  primaryCondition,
+  conditions,
+  lastVisit, 
+  riskFactors = [],
+  onClick, 
+  delay = 0 
 }) => {
-  const riskColors = {
-    low: 'bg-green-100 text-green-800',
-    medium: 'bg-amber-100 text-amber-800',
-    high: 'bg-red-100 text-red-800'
+  const getRiskBadgeStyle = () => {
+    if (!Array.isArray(riskFactors) || riskFactors.length === 0) {
+      return 'bg-gray-100 text-gray-800';
+    }
+    
+    if (riskFactors.some(r => r.level === 'high')) {
+      return 'bg-red-100 text-red-800';
+    }
+    if (riskFactors.some(r => r.level === 'medium')) {
+      return 'bg-amber-100 text-amber-800';
+    }
+    return 'bg-green-100 text-green-800';
   };
+
+  const getRiskLevel = () => {
+    if (!Array.isArray(riskFactors) || riskFactors.length === 0) return 'Low Risk';
+    
+    if (riskFactors.some(r => r.level === 'high')) return 'High Risk';
+    if (riskFactors.some(r => r.level === 'medium')) return 'Medium Risk';
+    return 'Low Risk';
+  };
+
+  const condition = primaryCondition || conditions?.[0] || 'No condition listed';
   
   return (
-    <AnimatedCard 
-      variant="hover" 
-      className="overflow-hidden cursor-pointer" 
-      onClick={onClick}
-      delay={delay}
-    >
-      <AnimatedCardHeader className="p-4 pb-2">
-        <AnimatedCardTitle className="text-lg">{name}</AnimatedCardTitle>
-        <AnimatedCardDescription>Age {age} • {condition}</AnimatedCardDescription>
-      </AnimatedCardHeader>
-      <AnimatedCardContent className="p-4 pt-0">
-        <div className="flex justify-between items-center mt-2">
-          <span className="text-sm text-muted-foreground">Last visit: {lastVisit}</span>
-          <AnimatedBadge 
-            animation={riskLevel === 'high' ? 'pulse' : 'none'} 
-            className={`text-xs px-2 py-1 rounded-full font-medium ${riskColors[riskLevel]}`}
-          >
-            {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk
-          </AnimatedBadge>
-        </div>
-      </AnimatedCardContent>
-    </AnimatedCard>
+    <Link to={`/patient/${name.replace(/\s+/g, '-').toLowerCase()}`} className="block">
+      <Card className="hover:bg-gray-50 transition-colors">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium">{name}</h3>
+              <p className="text-sm text-muted-foreground">
+                Age {age} • {condition}
+              </p>
+            </div>
+            <Badge className={getRiskBadgeStyle()}>
+              {getRiskLevel()}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 };
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { userInfo } = useAuth();
-  
-  // Mock patient data
-  const recentPatients = [
-    { id: '1', name: 'James Wilson', age: 67, condition: 'Hypertension, Diabetes', lastVisit: '3 days ago', riskLevel: 'high' as const },
-    { id: '2', name: 'Maria Garcia', age: 54, condition: 'COPD', lastVisit: '1 week ago', riskLevel: 'medium' as const },
-    { id: '3', name: 'Robert Chen', age: 71, condition: 'Heart Failure', lastVisit: '2 weeks ago', riskLevel: 'high' as const },
-    { id: '4', name: 'Sarah Johnson', age: 42, condition: 'Asthma', lastVisit: '1 month ago', riskLevel: 'low' as const },
-  ];
-  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [patients, setPatients] = useState<PatientData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPatients = async () => {
+      try {
+        const allPatients = await getAllPatients();
+        setPatients(allPatients);
+      } catch (error) {
+        console.error('Error loading patients:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPatients();
+  }, []);
+
+  const filteredPatients = patients.filter(patient =>
+    patient.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handlePatientClick = (patientId: string) => {
     navigate(`/patient/${patientId}`);
   };
-  
+
+  const getRiskLevelColor = (riskFactors?: Array<{ level: string }>) => {
+    if (!riskFactors || !Array.isArray(riskFactors) || riskFactors.length === 0) {
+      return 'text-gray-600 bg-gray-50';
+    }
+    
+    const highRisk = riskFactors.some(r => r.level === 'high');
+    const mediumRisk = riskFactors.some(r => r.level === 'medium');
+    
+    if (highRisk) return 'text-red-600 bg-red-50';
+    if (mediumRisk) return 'text-yellow-600 bg-yellow-50';
+    return 'text-green-600 bg-green-50';
+  };
+
+  const getRiskLevel = (riskFactors: Array<{ level: string }> = []) => {
+    if (!Array.isArray(riskFactors)) return 'Low Risk';
+    
+    if (riskFactors.some(risk => risk.level === 'high')) {
+      return 'High Risk';
+    }
+    if (riskFactors.some(risk => risk.level === 'medium')) {
+      return 'Medium Risk';
+    }
+    return 'Low Risk';
+  };
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Clinical Dashboard">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-healable-primary mx-auto"></div>
+            <p className="mt-4 text-healable-secondary">Loading patients...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout title="Clinical Dashboard">
       <div className="space-y-6">
@@ -145,11 +224,28 @@ const Dashboard: React.FC = () => {
         
         <MotionWrapper variant="fadeUp" delay={0.4}>
           <h2 className="text-xl font-semibold mb-4 text-healable-secondary">Recent Patients</h2>
+          <div className="mb-8">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Input
+                type="text"
+                placeholder="Search patients by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-full"
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {recentPatients.map((patient, index) => (
+            {filteredPatients.map((patient, index) => (
               <PatientCard 
                 key={patient.id}
-                {...patient}
+                name={patient.name}
+                age={patient.age}
+                primaryCondition={patient.primaryCondition}
+                conditions={patient.conditions}
+                lastVisit={patient.lastVisit}
+                riskFactors={patient.riskFactors}
                 onClick={() => handlePatientClick(patient.id)}
                 delay={0.1 * index}
               />

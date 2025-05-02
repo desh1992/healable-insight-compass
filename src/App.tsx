@@ -4,6 +4,8 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/contexts/AuthContext';
 import AuthGuard from '@/components/guards/AuthGuard';
 import EthicsAgreementRoute from '@/components/EthicsAgreementRoute';
+import { PublicGuard } from '@/components/guards/PublicGuard';
+import { Toaster } from '@/components/ui/sonner';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -22,14 +24,24 @@ function App() {
       <TooltipProvider>
         <BrowserRouter>
           <AuthProvider>
+            <Toaster 
+              richColors 
+              position="bottom-right"
+              expand={true}
+              closeButton={true}
+            />
             <Routes>
-              <Route path="/login" element={<LoginPage />} />
+              {/* Public Routes */}
+              <Route element={<PublicGuard />}>
+                <Route path="/login" element={<LoginPage />} />
+              </Route>
               
+              {/* Protected Routes */}
               <Route element={<AuthGuard />}>
                 {/* Ethics Agreement Page */}
                 <Route path="/ethics-agreement" element={<EthicsAgreement />} />
                 
-                {/* Protected Routes (require both auth and ethics agreement) */}
+                {/* Routes that require ethics agreement */}
                 <Route element={<EthicsAgreementRoute />}>
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/patients" element={<PatientRecordsPage />} />
@@ -39,7 +51,9 @@ function App() {
                 </Route>
               </Route>
               
+              {/* Default redirect */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </AuthProvider>
         </BrowserRouter>

@@ -3,29 +3,33 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from "@/components/ui/sonner";
 import { 
   getAccessToken, 
-  setAccessToken, 
+  setAccessToken as setStoredAccessToken, 
   getUserInfo, 
-  setUserInfo, 
+  setUserInfo as setStoredUserInfo, 
   clearAuthStorage,
   StoredUserInfo,
-  setEthicsAgreed as setStoredEthicsAgreed,
-  getEthicsAgreed as getStoredEthicsAgreed
+  setEthicsAgreed,
+  getEthicsAgreed
 } from '@/utils/storage';
 
 // Define the user roles
 export type UserRole = 'physician' | 'caseManager' | 'admin' | 'analyst';
 
 interface UserInfo {
+  userId: string;
   name: string;
   role: string;
   email: string;
+  department?: string;
+  access_token: string;
+  token_type: string;
 }
 
 export interface AuthContextType {
   isAuthenticated: boolean;
   userInfo: UserInfo | null;
   hasAgreedToEthics: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
   logout: () => void;
   setHasAgreedToEthics: (agreed: boolean) => void;
 }
@@ -40,44 +44,94 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Initialize auth state from storage
   useEffect(() => {
-    // Check local storage for auth state
-    const storedAuth = localStorage.getItem('isAuthenticated');
-    const storedEthics = localStorage.getItem('hasAgreedToEthics');
-    const storedUserInfo = localStorage.getItem('userInfo');
+    const initializeAuthState = () => {
+      const storedToken = getAccessToken();
+      const storedUserInfo = getUserInfo();
+      const storedEthicsAgreed = getEthicsAgreed();
 
-    if (storedAuth === 'true') {
-      setIsAuthenticated(true);
-      if (storedUserInfo) {
-        setUserInfo(JSON.parse(storedUserInfo));
+      // If we have both token and user info, set authenticated state
+      if (storedToken && storedUserInfo) {
+        setIsAuthenticated(true);
+        setUserInfo(storedUserInfo);
       }
-    }
 
-    if (storedEthics === 'true') {
-      setHasAgreedToEthics(true);
-    }
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    // Mock login - in real app, this would make an API call
-    const mockUserInfo = {
-      name: 'healable-insights',
-      role: 'doctor',
-      email: email
+      // Set ethics agreement state
+      if (storedEthicsAgreed) {
+        setHasAgreedToEthics(true);
+      }
     };
 
-    setIsAuthenticated(true);
-    setUserInfo(mockUserInfo);
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userInfo', JSON.stringify(mockUserInfo));
+    initializeAuthState();
+  }, []); // Only run on mount
 
-    // If user hasn't agreed to ethics, redirect them there
-    if (!hasAgreedToEthics) {
-      navigate('/ethics-agreement');
-    } else {
-      // Otherwise, send them to their intended destination or dashboard
-      const intendedPath = location.state?.from?.pathname || '/dashboard';
-      navigate(intendedPath);
+  // Handle routing based on auth state
+  useEffect(() => {
+    const handleAuthRouting = () => {
+      const currentPath = location.pathname;
+      
+      if (isAuthenticated) {
+        if (!hasAgreedToEthics && currentPath !== '/ethics-agreement') {
+          // If authenticated but hasn't agreed to ethics, redirect to ethics page
+          navigate('/ethics-agreement', { state: { from: location }, replace: true });
+        }
+      } else if (currentPath !== '/login') {
+        // If not authenticated and not on login page, redirect to login
+        navigate('/login', { state: { from: location }, replace: true });
+      }
+    };
+
+    handleAuthRouting();
+  }, [isAuthenticated, hasAgreedToEthics, location.pathname, navigate]);
+
+  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
+    try {
+      const response = await fetch('https://healable-insights-backend-f8567b9c5516.herokuapp.com/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast.error(errorData.detail || "Login failed. Please check your credentials.");
+        return false;
+      }
+
+      const data = await response.json();
+      
+      // Store the user info and token
+      const userInfo: UserInfo = {
+        userId: data.userId,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        department: data.department || '',
+        access_token: data.access_token,
+        token_type: data.token_type,
+      };
+
+      // Store token and user info in localStorage for persistence
+      setStoredAccessToken(data.access_token);
+      setStoredUserInfo(userInfo);
+
+      // Update React state
+      setUserInfo(userInfo);
+      setIsAuthenticated(true);
+
+      toast.success("Login successful");
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error("An error occurred during login. Please try again.");
+      return false;
     }
   };
 
@@ -85,15 +139,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
     setUserInfo(null);
     setHasAgreedToEthics(false);
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userInfo');
-    localStorage.removeItem('hasAgreedToEthics');
-    navigate('/login');
+    clearAuthStorage();
+    navigate('/login', { replace: true });
   };
 
   const handleSetHasAgreedToEthics = (agreed: boolean) => {
     setHasAgreedToEthics(agreed);
-    localStorage.setItem('hasAgreedToEthics', agreed.toString());
+    setEthicsAgreed(agreed);
+    
+    // After agreeing to ethics, navigate to intended destination or dashboard
+    const intendedPath = location.state?.from?.pathname || '/dashboard';
+    navigate(intendedPath, { replace: true });
   };
 
   const value: AuthContextType = {

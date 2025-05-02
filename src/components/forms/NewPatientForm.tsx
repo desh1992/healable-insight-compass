@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { Plus, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -351,27 +352,39 @@ const NewPatientForm: React.FC = () => {
                         />
                       </div>
                       <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor={`medications.${index}.adherence`}>
-                          Adherence Rate (%)
-                        </Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          {...register(`medications.${index}.adherence` as const, {
-                            valueAsNumber: true,
-                          })}
-                        />
-                        <div className="h-2 bg-gray-200 rounded-full mt-2">
-                          <div
-                            className={`h-2 rounded-full ${
-                              field.adherence >= 85
-                                ? 'bg-green-500'
-                                : field.adherence >= 70
-                                ? 'bg-amber-500'
-                                : 'bg-red-500'
-                            }`}
-                            style={{ width: `${field.adherence || 0}%` }}
+                        <div className="flex justify-between items-center">
+                          <Label htmlFor={`medications.${index}.adherence`}>
+                            Adherence Rate
+                          </Label>
+                        </div>
+                        <div className="relative pt-2">
+                          <Controller
+                            control={control}
+                            name={`medications.${index}.adherence`}
+                            defaultValue={100}
+                            render={({ field: { value, onChange } }) => (
+                              <div className="flex items-center gap-2">
+                                <div className="flex-grow">
+                                  <Slider
+                                    value={[value || 100]}
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    onValueChange={(values) => onChange(values[0])}
+                                    className={`${
+                                      (value || 100) >= 85
+                                        ? '[&>.relative>.absolute]:bg-green-500 [&>.relative]:bg-green-100'
+                                        : (value || 100) >= 70
+                                        ? '[&>.relative>.absolute]:bg-amber-500 [&>.relative]:bg-amber-100'
+                                        : '[&>.relative>.absolute]:bg-red-500 [&>.relative]:bg-red-100'
+                                    }`}
+                                  />
+                                </div>
+                                <div className="w-14 text-right text-sm font-medium">
+                                  {value || 100}%
+                                </div>
+                              </div>
+                            )}
                           />
                         </div>
                       </div>

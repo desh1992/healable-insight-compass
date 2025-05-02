@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAccessToken, getUserInfo } from '@/utils/storage';
 
 const AuthGuard: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 
-  if (!isAuthenticated) {
-    // Redirect to login but save the intended destination
+  // Check for stored auth state
+  const storedToken = getAccessToken();
+  const storedUserInfo = getUserInfo();
+  const isStoredAuthenticated = !!(storedToken && storedUserInfo);
+
+  if (!isAuthenticated && !isStoredAuthenticated) {
+    // Only redirect to login if there's no stored auth state
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

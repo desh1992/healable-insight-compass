@@ -17,6 +17,7 @@ import { formatDate } from '@/utils/dateFormat';
 import { Badge } from "@/components/ui/badge";
 
 interface PatientCardProps {
+  id: string;
   name: string;
   age?: number;
   primaryCondition?: string;
@@ -28,6 +29,7 @@ interface PatientCardProps {
 }
 
 const PatientCard: React.FC<PatientCardProps> = ({ 
+  id, 
   name, 
   age, 
   primaryCondition,
@@ -62,7 +64,7 @@ const PatientCard: React.FC<PatientCardProps> = ({
   const condition = primaryCondition || conditions?.[0] || 'No condition listed';
   
   return (
-    <Link to={`/patient/${name.replace(/\s+/g, '-').toLowerCase()}`} className="block">
+    <Link to={`/patient/${id}`} className="block">
       <Card className="hover:bg-gray-50 transition-colors">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
@@ -158,14 +160,6 @@ const Dashboard: React.FC = () => {
             <h2 className="text-2xl font-bold text-healable-secondary">
               Welcome, {userInfo?.name}
             </h2>
-            <motion.div 
-              whileHover={{ scale: 1.05 }} 
-              whileTap={{ scale: 0.95 }}
-            >
-              <Button className="bg-healable-primary hover:bg-healable-secondary transition-colors">
-                New Patient
-              </Button>
-            </motion.div>
           </div>
         </MotionWrapper>
         
@@ -240,6 +234,7 @@ const Dashboard: React.FC = () => {
             {filteredPatients.map((patient, index) => (
               <PatientCard 
                 key={patient.id}
+                id={patient.id}
                 name={patient.name}
                 age={patient.age}
                 primaryCondition={patient.primaryCondition}

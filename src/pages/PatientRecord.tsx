@@ -15,7 +15,8 @@ import LiveNoteCapture from '@/components/LiveNoteCapture';
 import { FileText, Mic } from 'lucide-react';
 import { formatDateTime, formatDate } from '@/utils/dateFormat';
 import { Note } from '@/types/notes';
-import { saveNote } from '@/utils/storage';
+import { saveNote, getNotes } from '@/utils/storage';
+import { Slider } from '@/components/ui/slider';
 
 // Add type definitions at the top
 interface RiskFactor {
@@ -97,6 +98,23 @@ const AIQuerySection: React.FC<{
   };
   
   const handleCopyToNote = (content: string) => {
+    // Check if the note already exists
+    const existingNotes = getNotes(patientId);
+    const isDuplicate = existingNotes.some(note => 
+      note.content === content.trim() && 
+      note.type === 'ai_generated' &&
+      // Check if the note was created in the last minute (to prevent rapid duplicates)
+      Date.now() - new Date(note.timestamp).getTime() < 60000
+    );
+
+    if (isDuplicate) {
+      toast.error('This note was already added recently', {
+        duration: 3000,
+        position: 'bottom-right',
+      });
+      return;
+    }
+
     const note: Note = {
       id: `note-${Date.now()}`,
       patientId,
@@ -106,7 +124,14 @@ const AIQuerySection: React.FC<{
     };
     
     saveNote(note);
-    toast.success('Note saved successfully');
+    setAiResponseContent(''); // Clear the AI response content after saving
+    toast.success('Note saved successfully', {
+      duration: 3000,
+      position: 'bottom-right',
+      className: 'bg-healable-primary text-white',
+      description: 'The AI-generated insight has been added to patient notes',
+      icon: '✓'
+    });
   };
 
   return (
@@ -397,17 +422,30 @@ const PatientRecord: React.FC = () => {
                       </div>
                       {med.adherence !== undefined && (
                         <div className="mt-2">
-                          <div className="text-xs text-muted-foreground mb-1">Adherence</div>
-                          <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div 
-                              className={`h-2.5 rounded-full ${
-                                med.adherence > 85 ? 'bg-green-500' : 
-                                med.adherence > 70 ? 'bg-amber-500' : 'bg-red-500'
-                              }`}
-                              style={{ width: `${med.adherence}%` }}
-                            ></div>
+                          <div className="flex justify-between items-center mb-1">
+                            <div className="text-xs text-muted-foreground">Adherence</div>
                           </div>
-                          <div className="text-xs mt-1 text-right">{med.adherence}%</div>
+                          <div className="flex items-center gap-4">
+                            <div className="flex-grow relative">
+                              <Slider
+                                defaultValue={[med.adherence]}
+                                min={0}
+                                max={100}
+                                step={5}
+                                disabled
+                                className={`${
+                                  med.adherence > 85
+                                    ? '[&>.relative>.absolute]:bg-green-500 [&>.relative]:bg-green-100'
+                                    : med.adherence > 70
+                                    ? '[&>.relative>.absolute]:bg-amber-500 [&>.relative]:bg-amber-100'
+                                    : '[&>.relative>.absolute]:bg-red-500 [&>.relative]:bg-red-100'
+                                }`}
+                              />
+                              <div className="absolute right-0 -top-6">
+                                <span className="text-lg font-semibold">{med.adherence}%</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

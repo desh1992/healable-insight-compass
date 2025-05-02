@@ -84,14 +84,13 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password, role as UserRole);
-      if (success) {
-        navigate('/ethics-agreement');
-      } else {
-        toast.error('Invalid credentials. Please check your email, password, and role.');
+      const success = await login(email, password, role);
+      if (!success) {
+        setPassword(''); // Clear password on failed login
       }
     } catch (error) {
       toast.error('An error occurred during login. Please try again.');
+      setPassword(''); // Clear password on error
     } finally {
       setIsLoading(false);
     }

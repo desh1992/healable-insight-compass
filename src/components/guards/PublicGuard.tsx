@@ -1,29 +1,24 @@
 import React, { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAccessToken, getUserInfo } from '@/utils/storage';
 
-interface PublicGuardProps {
-  children: React.ReactNode;
-}
-
-export const PublicGuard: React.FC<PublicGuardProps> = ({ children }) => {
+export const PublicGuard: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
+  
+  // Check for stored auth state
+  const storedToken = getAccessToken();
+  const storedUserInfo = getUserInfo();
+  const isStoredAuthenticated = !!(storedToken && storedUserInfo);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      // If user is already authenticated, redirect to dashboard
-      // or to the returnUrl if it exists in the query params
-      const params = new URLSearchParams(location.search);
-      const returnUrl = params.get('returnUrl');
-      navigate(returnUrl || '/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate, location]);
-
-  if (isAuthenticated) {
-    return null;
+  if (isAuthenticated || isStoredAuthenticated) {
+    // If user is already authenticated, redirect to dashboard
+    // or to the returnUrl if it exists in the query params
+    const params = new URLSearchParams(location.search);
+    const returnUrl = params.get('returnUrl');
+    return <Navigate to={returnUrl || '/dashboard'} replace />;
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 }; 

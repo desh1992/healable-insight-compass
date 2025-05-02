@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { saveNote } from '@/utils/storage';
 import { Note } from '@/types/notes';
+import { toast } from '@/components/ui/sonner';
 
 interface AddNoteModalProps {
   isOpen: boolean;
@@ -30,7 +31,13 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
   const [content, setContent] = useState(initialContent);
 
   const handleSave = () => {
-    if (!content.trim()) return;
+    if (!content.trim()) {
+      toast.error('Note content cannot be empty', {
+        duration: 3000,
+        position: 'bottom-right'
+      });
+      return;
+    }
 
     const note: Note = {
       id: `note-${Date.now()}`,
@@ -41,6 +48,13 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({
     };
 
     saveNote(note);
+    toast.success('Note saved successfully', {
+      duration: 3000,
+      position: 'bottom-right',
+      className: 'bg-healable-primary text-white',
+      description: `${noteType === 'ai_generated' ? 'AI-generated' : 'Manual'} note has been added to patient records`,
+      icon: '✓'
+    });
     setContent('');
     onClose();
   };

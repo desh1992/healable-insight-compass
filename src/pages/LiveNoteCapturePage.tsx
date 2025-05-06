@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, ChevronRight, ChevronLeft, History } from 'lucide-react';
+import { Mic, MicOff, ChevronRight, ChevronLeft, History, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { saveLiveNote } from '@/utils/storage';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactDOM from 'react-dom';
+import { useAudioTranscription } from '@/hooks/useAudioTranscription';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Message {
   id: number;
   text: string;
-  speaker: 'doctor' | 'patient';
+  speaker: 'doctor' | 'patient' | 'system';
   timestamp: string;
 }
 
@@ -23,44 +25,6 @@ interface CompletedConversation {
   messages: Message[];
 }
 
-const dummyConversation: Message[] = [
-  { id: 1, text: "Hello Mrs. Johnson, how are you feeling today?", speaker: 'doctor', timestamp: '10:30 AM' },
-  { id: 2, text: "I've been having some trouble sleeping lately, doctor.", speaker: 'patient', timestamp: '10:30 AM' },
-  { id: 3, text: "I see. How long has this been going on?", speaker: 'doctor', timestamp: '10:31 AM' },
-  { id: 4, text: "About two weeks now. I keep waking up in the middle of the night.", speaker: 'patient', timestamp: '10:31 AM' },
-  { id: 5, text: "Have you noticed any changes in your daily routine or stress levels?", speaker: 'doctor', timestamp: '10:32 AM' },
-  { id: 6, text: "Well, I started a new job last month, and it's been quite demanding.", speaker: 'patient', timestamp: '10:32 AM' },
-  { id: 7, text: "That could definitely contribute to sleep problems. Has your sleep schedule changed?", speaker: 'doctor', timestamp: '10:33 AM' },
-  { id: 8, text: "Yes, I've been working later hours and often bring work home with me.", speaker: 'patient', timestamp: '10:33 AM' },
-  { id: 9, text: "Are you using screens close to bedtime? Phone, computer, TV?", speaker: 'doctor', timestamp: '10:34 AM' },
-  { id: 10, text: "Yes, I often check emails before bed and sometimes work on my laptop until late.", speaker: 'patient', timestamp: '10:34 AM' },
-  { id: 11, text: "That could be a significant factor. Blue light from screens can disrupt melatonin production.", speaker: 'doctor', timestamp: '10:35 AM' },
-  { id: 12, text: "I didn't realize that could affect my sleep so much.", speaker: 'patient', timestamp: '10:35 AM' },
-  { id: 13, text: "Let's talk about some strategies to improve your sleep hygiene.", speaker: 'doctor', timestamp: '10:36 AM' },
-  { id: 14, text: "I'd appreciate that. I really need to get better rest.", speaker: 'patient', timestamp: '10:36 AM' },
-];
-
-const TypewriterText: React.FC<{ text: string; onComplete?: () => void }> = ({ text, onComplete }) => {
-  const [displayedText, setDisplayedText] = useState('');
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    if (currentIndex < text.length) {
-      const timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + text[currentIndex]);
-        setCurrentIndex(prev => prev + 1);
-      }, 50);
-
-      return () => clearTimeout(timeout);
-    } else if (onComplete) {
-      onComplete();
-    }
-  }, [currentIndex, text, onComplete]);
-
-  return <span>{displayedText}</span>;
-};
-
-// Create a portal component for the animation
 const AnimationPortal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mounted, setMounted] = useState(false);
   
@@ -252,40 +216,94 @@ const BreathingAnimation: React.FC<{ isActive: boolean }> = ({ isActive }) => {
 };
 
 const LiveNoteCapturePage: React.FC = () => {
-  const [isRecording, setIsRecording] = useState(false);
+  // Replace dummy patient ID with actual logic to get current patient ID
+  const patientId = "123"; // In a real app, this would come from a route param or context
+  
+  const {
+    isRecording: isTranscribing,
+    startRecording,
+    stopRecording,
+    activeMessage,
+    completedMessages,
+    error: recordingError,
+    isPaused,
+    messageId,
+    shouldCreateNewMessage,
+    transcribedText
+  } = useAudioTranscription(patientId);
+  
   const [displayedMessages, setDisplayedMessages] = useState<Message[]>([]);
-  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [completedConversations, setCompletedConversations] = useState<CompletedConversation[]>([]);
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false);
+  const [isPermissionDenied, setIsPermissionDenied] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Store the current message ID to detect changes
+  const lastMessageIdRef = useRef<number>(0);
+  // Keep track of whether we've added a message for the current ID
+  const messageAddedRef = useRef<boolean>(false);
+  // Single active message ID for the entire transcription session
+  const sessionMessageIdRef = useRef<number>(Date.now());
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Process transcribed text when it changes - maintain a SINGLE message box
   useEffect(() => {
-    if (isRecording && currentMessageIndex < dummyConversation.length) {
-      const timer = setTimeout(() => {
-        setDisplayedMessages(prev => [...prev, dummyConversation[currentMessageIndex]]);
-        setCurrentMessageIndex(prev => prev + 1);
-      }, 2000);
-
-      return () => clearTimeout(timer);
+    if (isTranscribing && transcribedText && transcribedText.trim() !== '') {
+      // When starting a new recording session, reset to a single message
+      if (displayedMessages.length === 0) {
+        // Create a single message for the entire session
+        const newMessage: Message = {
+          // Use a stable ID for the entire session
+          id: sessionMessageIdRef.current,
+          text: transcribedText,
+          speaker: 'system',
+          timestamp: new Date().toLocaleString()
+        };
+        
+        // Set this as the only message
+        setDisplayedMessages([newMessage]);
+      } else {
+        // Always update the single message with new content
+        setDisplayedMessages(prev => {
+          // Copy the single message (we'll only have one)
+          const updatedMessage = {
+            ...prev[0],
+            text: transcribedText
+          };
+          
+          // Return an array with just this one updated message
+          return [updatedMessage];
+        });
+      }
     }
-  }, [isRecording, currentMessageIndex]);
+  }, [transcribedText, isTranscribing]);
 
   useEffect(() => {
     scrollToBottom();
   }, [displayedMessages]);
 
-  const handleStartCapture = () => {
-    setIsRecording(true);
-    setDisplayedMessages([]);
-    setCurrentMessageIndex(0);
+  const handleStartCapture = async () => {
+    setIsPermissionDenied(false);
+    setDisplayedMessages([]); // Clear messages when starting
+    // Generate a new stable ID for this recording session
+    sessionMessageIdRef.current = Date.now();
+    
+    try {
+      // This will trigger the browser permission prompt if not already granted
+      await startRecording();
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
+        setIsPermissionDenied(true);
+      }
+    }
   };
 
   const handleStopCapture = () => {
-    setIsRecording(false);
+    stopRecording();
     // Save the completed conversation
     if (displayedMessages.length > 0) {
       const newConversation: CompletedConversation = {
@@ -296,11 +314,11 @@ const LiveNoteCapturePage: React.FC = () => {
       };
       setCompletedConversations(prev => [newConversation, ...prev]);
       
-      // Save to storage (you would implement this based on your storage needs)
+      // Save to storage
       saveLiveNote({
         id: newConversation.id,
-        patientId: "123", // In real app, this would be actual patient ID
-        content: displayedMessages.map(m => `${m.speaker}: ${m.text}`).join('\n'),
+        patientId: patientId,
+        content: displayedMessages.map(m => m.text).join('\n\n'),
         timestamp: new Date().toISOString(),
         type: 'live_capture',
         speaker: 'system'
@@ -312,7 +330,7 @@ const LiveNoteCapturePage: React.FC = () => {
     <AppLayout title="Live Note Capture">
       <div className="h-[calc(100vh-4rem)] flex flex-col relative transparent-bg">
         {/* Breathing Animation */}
-        <BreathingAnimation isActive={isRecording} />
+        <BreathingAnimation isActive={isTranscribing} />
         
         <style dangerouslySetInnerHTML={{
           __html: `
@@ -388,7 +406,7 @@ const LiveNoteCapturePage: React.FC = () => {
         `}} />
         
         <div className="flex items-center justify-between p-4 border-b z-10 bg-white/90 backdrop-blur-sm">
-          {!isRecording ? (
+          {!isTranscribing ? (
             <Button
               size="lg"
               onClick={handleStartCapture}
@@ -415,11 +433,37 @@ const LiveNoteCapturePage: React.FC = () => {
           )}
         </div>
 
+        {recordingError && (
+          <Alert variant="destructive" className="mb-4 mx-4 mt-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{recordingError}</AlertDescription>
+          </Alert>
+        )}
+
+        {isPermissionDenied && (
+          <Alert variant="destructive" className="mb-4 mx-4 mt-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Microphone Access Denied</AlertTitle>
+            <AlertDescription>
+              Please allow microphone access to use the live transcription feature.
+              You may need to update your browser settings.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex flex-1 gap-4 p-4 overflow-hidden z-10 transparent-bg">
           {/* Live Conversation Area */}
           <div className="flex-1 flex flex-col h-full overflow-hidden transparent-bg">
             <ScrollArea className="flex-1 transparent-bg">
               <div className="space-y-4 p-4 transparent-bg">
+                {displayedMessages.length === 0 && !isTranscribing && (
+                  <div className="text-center text-gray-500 mt-8">
+                    Click "Start Capture" to begin recording and transcribing the conversation
+                  </div>
+                )}
+                
+                {/* Use layoutId to prevent re-animations when text changes */}
                 <AnimatePresence>
                   {displayedMessages.map((message) => (
                     <motion.div
@@ -427,20 +471,17 @@ const LiveNoteCapturePage: React.FC = () => {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className={cn(
-                        "flex flex-col p-4 rounded-lg max-w-[80%]",
-                        message.speaker === 'doctor' 
-                          ? "glass-message-doctor ml-auto" 
-                          : "glass-message-patient"
-                      )}
+                      layoutId={`message-${message.id}`} 
+                      transition={{ 
+                        layout: { duration: 0 }, // Disable layout animation
+                        opacity: { duration: 0.3 } // Keep fade animation
+                      }}
+                      className="flex flex-col p-4 rounded-lg bg-white/75 backdrop-blur-sm border border-gray-200 shadow-sm"
                     >
                       <div className="text-sm text-gray-500 mb-1">
-                        {message.speaker === 'doctor' ? 'Doctor' : 'Patient'} • {message.timestamp}
+                        {message.timestamp}
                       </div>
-                      <TypewriterText 
-                        text={message.text}
-                        onComplete={scrollToBottom}
-                      />
+                      <div>{message.text}</div>
                     </motion.div>
                   ))}
                 </AnimatePresence>

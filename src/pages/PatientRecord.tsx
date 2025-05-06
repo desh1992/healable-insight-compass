@@ -38,6 +38,10 @@ import ConditionModal from '@/components/ConditionModal';
 import RiskFactorModal from '@/components/RiskFactorModal';
 import PatientInfoModal from '@/components/PatientInfoModal';
 import VitalSignsModal from '@/components/VitalSignsModal';
+import { useAudioTranscription } from '@/hooks/useAudioTranscription';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from 'lucide-react';
+import { saveLiveNote } from '@/utils/storage';
 
 // Add type definitions at the top
 interface RiskFactor {
@@ -69,30 +73,6 @@ interface PatientSummaryProps {
   };
 }
 
-// Move dummy conversation data outside the component to prevent recreation on every render
-const dummyConversation = [
-  { id: 1, text: "Hello, how are you feeling today?", speaker: 'doctor', timestamp: '10:30 AM' },
-  { id: 2, text: "I've been having some trouble sleeping lately, doctor.", speaker: 'patient', timestamp: '10:30 AM' },
-  { id: 3, text: "I see. How long has this been going on?", speaker: 'doctor', timestamp: '10:31 AM' },
-  { id: 4, text: "About two weeks now. I keep waking up in the middle of the night.", speaker: 'patient', timestamp: '10:31 AM' },
-  { id: 5, text: "Have you been experiencing any other symptoms? Stress, anxiety, or changes in your daily routine?", speaker: 'doctor', timestamp: '10:32 AM' },
-  { id: 6, text: "Yes, I started a new job last month. It's been quite stressful with longer hours.", speaker: 'patient', timestamp: '10:32 AM' },
-  { id: 7, text: "I see. Are you using screens close to bedtime? Phone, computer, TV?", speaker: 'doctor', timestamp: '10:33 AM' },
-  { id: 8, text: "Yes, I often check emails before bed and sometimes work on my laptop until late.", speaker: 'patient', timestamp: '10:33 AM' },
-  { id: 9, text: "That could be a significant factor. Blue light from screens can disrupt melatonin production, which helps regulate sleep.", speaker: 'doctor', timestamp: '10:34 AM' },
-  { id: 10, text: "I didn't realize that could affect my sleep so much.", speaker: 'patient', timestamp: '10:34 AM' },
-  { id: 11, text: "It definitely can. Let's discuss some strategies to improve your sleep hygiene and manage stress.", speaker: 'doctor', timestamp: '10:35 AM' },
-  { id: 12, text: "I would really appreciate that. I need to get better rest.", speaker: 'patient', timestamp: '10:36 AM' },
-  { id: 13, text: "First, try to establish a consistent sleep schedule, even on weekends. Go to bed and wake up at the same time each day.", speaker: 'doctor', timestamp: '10:37 AM' },
-  { id: 14, text: "That makes sense. I've been staying up late on weekends and it probably disrupts my rhythm.", speaker: 'patient', timestamp: '10:38 AM' },
-  { id: 15, text: "Second, avoid screens at least 1 hour before bedtime. Consider reading a physical book instead.", speaker: 'doctor', timestamp: '10:39 AM' },
-  { id: 16, text: "I could try that. I have some books I've been meaning to read.", speaker: 'patient', timestamp: '10:40 AM' },
-  { id: 17, text: "Great. Also, create a relaxing bedtime routine - perhaps a warm bath or gentle stretching.", speaker: 'doctor', timestamp: '10:41 AM' },
-  { id: 18, text: "That sounds nice. Would light exercise during the day help too?", speaker: 'patient', timestamp: '10:42 AM' },
-  { id: 19, text: "Absolutely. Regular physical activity can significantly improve sleep quality. Just try not to exercise too close to bedtime.", speaker: 'doctor', timestamp: '10:43 AM' },
-  { id: 20, text: "I'll make these changes and see how it goes. Thank you, doctor.", speaker: 'patient', timestamp: '10:44 AM' }
-];
-
 // AI Query component
 const AIQuerySection: React.FC<{
   setAiResponseContent: (content: string) => void;
@@ -116,6 +96,27 @@ const AIQuerySection: React.FC<{
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  
+  // For live note capture
+  const [currentSpeaker, setCurrentSpeaker] = useState<'doctor' | 'patient'>('doctor');
+  const [isPermissionDenied, setIsPermissionDenied] = useState(false);
+  
+  const {
+    isRecording: isTranscribing,
+    startRecording,
+    stopRecording,
+    transcribedText,
+    error: recordingError,
+    isPaused,
+    messageId,
+    shouldCreateNewMessage
+  } = useAudioTranscription(patientId);
+  
+  // Add a stable message ID reference
+  const lastMessageIdRef = useRef<number>(0);
+  
+  // Add a reference to track if a message has been added for the current ID
+  const messageAddedRef = useRef<boolean>(false);
   
   // Handle initialQuery when provided (coming back from history page)
   useEffect(() => {
@@ -312,76 +313,113 @@ const AIQuerySection: React.FC<{
     setIsConfirmDialogOpen(false);
   }, [displayedMessages]);
 
-  // Live note capture handlers (simplified version from LiveNoteCapturePage)
-  const handleStartCapture = useCallback(() => {
-    setIsRecording(true);
-    setDisplayedMessages([]);
+  // Update the transcription useEffect
+  useEffect(() => {
+    if (isTranscribing && transcribedText && transcribedText.trim() !== '') {
+      // If we should create a new message (either first message or after a pause is detected)
+      if (shouldCreateNewMessage || messageId !== lastMessageIdRef.current) {
+        // Create a new message (either first message or after pause)
+        const newMessage = {
+          id: messageId, // Use the stable ID from the hook
+          text: transcribedText,
+          speaker: 'system',
+          timestamp: new Date().toLocaleString()
+        };
+        
+        // Add the new message to the list
+        setDisplayedMessages(prev => [...prev, newMessage]);
+        
+        // Update the reference to the current message ID
+        lastMessageIdRef.current = messageId;
+        // Mark that we've added a message for this ID
+        messageAddedRef.current = true;
+      } else {
+        // Update the existing message with the same ID
+        setDisplayedMessages(prev => {
+          // Find the message with the matching ID
+          const index = prev.findIndex(msg => msg.id === messageId);
+          
+          if (index >= 0) {
+            // Update the existing message
+            const updatedMessages = [...prev];
+            updatedMessages[index] = {
+              ...updatedMessages[index],
+              text: transcribedText
+            };
+            return updatedMessages;
+          } else if (!messageAddedRef.current) {
+            // If the message wasn't found and we haven't added one yet, add it now
+            const newMessage = {
+              id: messageId,
+              text: transcribedText,
+              speaker: 'system',
+              timestamp: new Date().toLocaleString()
+            };
+            messageAddedRef.current = true;
+            return [...prev, newMessage];
+          }
+          return prev;
+        });
+      }
+    }
+  }, [transcribedText, isTranscribing, messageId, shouldCreateNewMessage]);
+
+  // Reset messageAddedRef when message ID changes
+  useEffect(() => {
+    messageAddedRef.current = false;
+  }, [messageId]);
+
+  // Handle pause detection
+  useEffect(() => {
+    if (isPaused && transcribedText && transcribedText.trim() !== '') {
+      // When a pause is detected, prepare for a new message block
+      console.log("Pause detected, ready for new message block");
+    }
+  }, [isPaused, transcribedText]);
+
+  const handleStartCapture = useCallback(async () => {
+    setIsPermissionDenied(false);
+    setDisplayedMessages([]); // Clear messages when starting
     setCurrentMessageIndex(0);
     setConversationProcessed(false);
-  }, []);
+    lastMessageIdRef.current = 0; // Reset message ID
+    messageAddedRef.current = false; // Reset message added flag
+    
+    try {
+      // This will trigger the browser permission prompt if not already granted
+      await startRecording();
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
+        setIsPermissionDenied(true);
+      }
+    }
+  }, [startRecording]);
 
   const handleStopCapture = useCallback(() => {
-    setIsRecording(false);
+    stopRecording();
+    
     // Save the completed conversation
     if (displayedMessages.length > 0) {
-      const newConversation = {
+      saveLiveNote({
         id: Date.now().toString(),
-        patientName: "Current Patient", // In a real implementation, use the actual patient name
-        timestamp: new Date().toLocaleString(),
-        messages: displayedMessages
-      };
-      setCompletedConversations(prev => [newConversation, ...prev]);
+        patientId,
+        content: displayedMessages.map(m => m.text).join('\n\n'),
+        timestamp: new Date().toISOString(),
+        type: 'live_capture',
+        speaker: 'system'
+      });
     }
-  }, [displayedMessages]);
+  }, [stopRecording, displayedMessages, patientId]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messagesEndRef]);
 
-  // Add back the message display useEffect
-  useEffect(() => {
-    if (isRecording && currentMessageIndex < dummyConversation.length && !conversationProcessed) {
-      const timer = setTimeout(() => {
-        setDisplayedMessages(prev => [...prev, dummyConversation[currentMessageIndex]]);
-        setCurrentMessageIndex(prev => prev + 1);
-        
-        // Mark conversation as processed when all messages have been added
-        if (currentMessageIndex === dummyConversation.length - 1) {
-          setConversationProcessed(true);
-        }
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isRecording, currentMessageIndex, conversationProcessed, dummyConversation]);
-
   // Auto-scroll when messages change
   useEffect(() => {
     scrollToBottom();
   }, [displayedMessages, scrollToBottom]);
-
-  // Memoize the TypewriterText component to prevent unnecessary re-renders
-  const TypewriterText = useMemo(() => {
-    return ({ text, onComplete }) => {
-      const [displayedText, setDisplayedText] = useState('');
-      const [currentIndex, setCurrentIndex] = useState(0);
-    
-      useEffect(() => {
-        if (currentIndex < text.length) {
-          const timeout = setTimeout(() => {
-            setDisplayedText(prev => prev + text[currentIndex]);
-            setCurrentIndex(prev => prev + 1);
-          }, 50);
-    
-          return () => clearTimeout(timeout);
-        } else if (onComplete) {
-          onComplete();
-        }
-      }, [currentIndex, text, onComplete]);
-    
-      return <span>{displayedText}</span>;
-    };
-  }, []);
 
   // Memoize the AnimationPortal component
   const AnimationPortal = useMemo(() => {
@@ -648,7 +686,7 @@ const AIQuerySection: React.FC<{
         // Live Note Capture UI with performance optimizations
         <div className="relative h-[calc(100vh-16rem)] flex flex-col">
           {/* Breathing Animation */}
-          <BreathingAnimation isActive={isRecording} />
+          <BreathingAnimation isActive={isTranscribing} />
           
           <style dangerouslySetInnerHTML={{ __html: animationStyles }} />
           
@@ -657,7 +695,7 @@ const AIQuerySection: React.FC<{
             <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm py-4 border-b px-4 rounded-xl">
               <div className="max-w-[1200px] mx-auto w-full">
                 <div className="flex justify-between items-center">
-                  {!isRecording ? (
+                  {!isTranscribing ? (
                     <Button
                       size="lg"
                       onClick={handleStartCapture}
@@ -672,6 +710,7 @@ const AIQuerySection: React.FC<{
                         <div className="w-2 h-2 bg-healable-primary rounded-full animate-ping" />
                         Recording in progress...
                       </div>
+                      
                       <Button
                         size="lg"
                         variant="destructive"
@@ -686,19 +725,44 @@ const AIQuerySection: React.FC<{
                   <Button
                     onClick={toggleLiveNote}
                     variant="outline"
-                    disabled={isRecording}
+                    disabled={isTranscribing}
                   >
                     Switch to AI Assistant
                   </Button>
                 </div>
               </div>
             </div>
+            
+            {recordingError && (
+              <Alert variant="destructive" className="mb-4 mx-4 mt-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{recordingError}</AlertDescription>
+              </Alert>
+            )}
+
+            {isPermissionDenied && (
+              <Alert variant="destructive" className="mb-4 mx-4 mt-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Microphone Access Denied</AlertTitle>
+                <AlertDescription>
+                  Please allow microphone access to use the live transcription feature.
+                  You may need to update your browser settings.
+                </AlertDescription>
+              </Alert>
+            )}
   
             <div className="flex flex-1 gap-4 overflow-hidden z-10 transparent-bg">
               {/* Live Conversation Area */}
               <div className="flex-1 flex flex-col h-full overflow-hidden transparent-bg">
                 <ScrollArea className="flex-1 transparent-bg pr-4">
                   <div className="space-y-4 p-4 transparent-bg pb-10">
+                    {displayedMessages.length === 0 && !isTranscribing && (
+                      <div className="text-center text-gray-500 mt-8">
+                        Click "Start Capture" to begin recording and transcribing the conversation
+                      </div>
+                    )}
+                    
                     <AnimatePresence>
                       {displayedMessages.map((message) => (
                         <motion.div
@@ -706,89 +770,23 @@ const AIQuerySection: React.FC<{
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -20 }}
-                          className={cn(
-                            "flex flex-col p-4 rounded-lg max-w-[80%]",
-                            message.speaker === 'doctor' 
-                              ? "glass-message-doctor ml-auto" 
-                              : "glass-message-patient"
-                          )}
+                          layoutId={`message-${message.id}`} 
+                          transition={{ 
+                            layout: { duration: 0 }, // Disable layout animation
+                            opacity: { duration: 0.3 } // Keep fade animation
+                          }}
+                          className="flex flex-col p-4 rounded-lg bg-white/75 backdrop-blur-sm border border-gray-200 shadow-sm"
                         >
                           <div className="text-sm text-gray-500 mb-1">
-                            {message.speaker === 'doctor' ? 'Doctor' : 'Patient'} • {message.timestamp}
+                            {message.timestamp}
                           </div>
-                          <TypewriterText 
-                            text={message.text}
-                            onComplete={scrollToBottom}
-                          />
+                          <div>{message.text}</div>
                         </motion.div>
                       ))}
                     </AnimatePresence>
                     <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
-              </div>
-  
-              {/* History section - made sticky */}
-              <div className="h-full sticky top-[5.5rem]">
-                <AnimatePresence>
-                  {isHistoryCollapsed ? (
-                    <motion.div
-                      initial={{ width: 0, opacity: 0 }}
-                      animate={{ width: 80, opacity: 1 }}
-                      exit={{ width: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="h-auto sticky top-[5.5rem]"
-                    >
-                      <div 
-                        className="flex flex-col items-center justify-center px-4 py-3 h-12 bg-white/90 backdrop-blur-sm border rounded-md cursor-pointer w-full"
-                        onClick={() => setIsHistoryCollapsed(false)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <History className="h-5 w-5" />
-                          <ChevronLeft className="h-5 w-5" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ width: 0, opacity: 0 }}
-                      animate={{ width: 320, opacity: 1 }}
-                      exit={{ width: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="flex flex-col overflow-hidden max-h-[calc(100vh-16rem)]"
-                    >
-                      <Card className="bg-white/90 backdrop-blur-sm h-full">
-                        <CardHeader 
-                          className="flex flex-row items-center justify-start p-5 cursor-pointer sticky top-0 z-10 bg-white/95" 
-                          onClick={() => setIsHistoryCollapsed(true)}
-                        >
-                          <div className="flex items-center">
-                            <ChevronRight className="h-5 w-5 mr-3 flex-shrink-0" />
-                            <CardTitle className="font-semibold text-lg my-0">Live Notes History</CardTitle>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <ScrollArea className="h-[calc(100vh-20rem)]">
-                            <div className="space-y-4">
-                              {completedConversations.map((conversation) => (
-                                <div
-                                  key={conversation.id}
-                                  className="p-3 rounded-lg border hover:bg-gray-50 cursor-pointer"
-                                >
-                                  <div className="font-medium">{conversation.patientName}</div>
-                                  <div className="text-sm text-gray-500">{conversation.timestamp}</div>
-                                  <div className="text-sm text-gray-600 mt-1">
-                                    {conversation.messages.length} messages
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -1481,22 +1479,6 @@ const PatientRecord: React.FC = () => {
             <p className="text-muted-foreground">
               Last visit: {formatDateTime(patientData.lastVisit)}
             </p>
-          </div>
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline"
-              onClick={() => setIsLiveNoteCaptureOpen(true)}
-            >
-              <Mic className="mr-2 h-4 w-4" /> 
-              Live Note
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/question-history/${patientId}`)}
-            >
-              <History className="mr-2 h-4 w-4" /> 
-              Query History
-            </Button>
           </div>
         </div>
 

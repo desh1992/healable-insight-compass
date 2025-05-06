@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -6,6 +7,8 @@ import AuthGuard from '@/components/guards/AuthGuard';
 import EthicsAgreementRoute from '@/components/EthicsAgreementRoute';
 import { PublicGuard } from '@/components/guards/PublicGuard';
 import { Toaster } from '@/components/ui/sonner';
+import { initializeMockData } from '@/utils/storage';
+import '@/index.css';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -15,10 +18,17 @@ import NewPatient from '@/pages/NewPatient';
 import LoginPage from '@/pages/LoginPage';
 import LiveNoteCapturePage from '@/pages/LiveNoteCapturePage';
 import EthicsAgreement from '@/pages/EthicsAgreement';
+import QuestionHistoryPage from '@/pages/QuestionHistoryPage';
+import ProfilePage from '@/pages/ProfilePage';
 
 const queryClient = new QueryClient();
 
 function App() {
+  // Initialize mock data when the application starts
+  useEffect(() => {
+    initializeMockData();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -46,8 +56,10 @@ function App() {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/patients" element={<PatientRecordsPage />} />
                   <Route path="/patient/:patientId" element={<PatientRecord />} />
+                  <Route path="/patient/:patientId/question-history" element={<QuestionHistoryPage />} />
                   <Route path="/new-patient" element={<NewPatient />} />
                   <Route path="/live-note-capture" element={<LiveNoteCapturePage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
                 </Route>
               </Route>
               

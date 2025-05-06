@@ -1,43 +1,38 @@
 // This is a mock service for demo purposes
 import { PatientData } from '@/types/patient';
 import { MOCK_PATIENTS } from '@/services/mockData';
-import { getStoredPatients, setStoredPatients, addStoredPatient } from '@/utils/storage';
+import { getPatientData, savePatientData } from '@/utils/storage';
+import { STORAGE_KEYS } from '@/utils/storage';
 
 export const getPatient = async (patientId: string): Promise<PatientData | null> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       try {
-        // First check localStorage for real patient data
-        const storedPatients = getStoredPatients();
-        const storedPatient = storedPatients.find((p: PatientData) => p.id === patientId);
+        // Use the patientData utility function that checks localStorage
+        const patient = getPatientData(patientId);
         
-        if (storedPatient) {
-          // Calculate age from DOB
-          const dob = new Date(storedPatient.dob);
-          const today = new Date();
-          const age = today.getFullYear() - dob.getFullYear();
-          
-          resolve({
-            ...storedPatient,
-            age,
-            lastVisit: new Date().toISOString(),
-            vitalSigns: {
-              ...storedPatient.vitalSigns,
-              lastUpdated: new Date().toISOString()
-            },
-            riskFactors: Array.isArray(storedPatient.riskFactors) ? storedPatient.riskFactors : []
-          });
-        } else {
-          // Fall back to mock data
-          const mockPatient = MOCK_PATIENTS[patientId];
-          if (mockPatient) {
-            resolve({
-              ...mockPatient,
-              riskFactors: Array.isArray(mockPatient.riskFactors) ? mockPatient.riskFactors : []
-            });
-          } else {
-            resolve(null);
+        if (patient) {
+          // Calculate age from DOB if needed
+          if (!patient.age && patient.dob) {
+            const dob = new Date(patient.dob);
+            const today = new Date();
+            patient.age = today.getFullYear() - dob.getFullYear();
+            
+            // Save the updated patient with age
+            savePatientData(patient);
           }
+          
+          // Ensure all collections are arrays
+          if (!Array.isArray(patient.riskFactors)) patient.riskFactors = [];
+          if (!Array.isArray(patient.medications)) patient.medications = [];
+          if (!Array.isArray(patient.labResults)) patient.labResults = [];
+          if (!Array.isArray(patient.careGaps)) patient.careGaps = [];
+          if (!Array.isArray(patient.conditions)) patient.conditions = [];
+          
+          resolve(patient);
+        } else {
+          console.log(`Patient with ID ${patientId} not found`);
+          resolve(null);
         }
       } catch (error) {
         console.error('Error fetching patient:', error);
@@ -51,30 +46,40 @@ export const getAllPatients = async (): Promise<PatientData[]> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       try {
-        // Combine stored and mock patients
-        const storedPatients = getStoredPatients();
-        const allPatients = [...storedPatients, ...Object.values(MOCK_PATIENTS)];
+        // Get all patients from localStorage
+        const storedPatients = localStorage.getItem(STORAGE_KEYS.PATIENTS);
+        if (!storedPatients) {
+          console.log('No patients found in storage');
+          resolve([]);
+          return;
+        }
         
-        // Calculate age for all patients and ensure riskFactors is always an array
-        const patientsWithAge = allPatients.map(patient => {
+        const patients = JSON.parse(storedPatients);
+        const patientArray = Object.values(patients) as PatientData[];
+        
+        // Process each patient to ensure data consistency
+        const processedPatients = patientArray.map(patient => {
+          // Create a deep copy to avoid reference issues
           const processedPatient = { ...patient };
           
-          // Calculate age if not present
+          // Calculate age if needed
           if (!processedPatient.age && processedPatient.dob) {
             const dob = new Date(processedPatient.dob);
             const today = new Date();
             processedPatient.age = today.getFullYear() - dob.getFullYear();
           }
           
-          // Ensure riskFactors is an array
-          if (!Array.isArray(processedPatient.riskFactors)) {
-            processedPatient.riskFactors = [];
-          }
+          // Ensure all collections are arrays
+          if (!Array.isArray(processedPatient.riskFactors)) processedPatient.riskFactors = [];
+          if (!Array.isArray(processedPatient.medications)) processedPatient.medications = [];
+          if (!Array.isArray(processedPatient.labResults)) processedPatient.labResults = [];
+          if (!Array.isArray(processedPatient.careGaps)) processedPatient.careGaps = [];
+          if (!Array.isArray(processedPatient.conditions)) processedPatient.conditions = [];
           
           return processedPatient;
         });
         
-        resolve(patientsWithAge);
+        resolve(processedPatients);
       } catch (error) {
         console.error('Error fetching patients:', error);
         resolve([]);
@@ -97,8 +102,8 @@ export const addPatient = async (patientData: Omit<PatientData, 'id' | 'lastVisi
           lastVisit: new Date().toISOString(),
         };
         
-        // Add to localStorage
-        addStoredPatient(newPatient);
+        // Add to localStorage using the storage utility function
+        savePatientData(newPatient);
         
         resolve(newPatient);
       } catch (error) {

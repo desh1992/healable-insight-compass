@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import HealableLogo from '@/components/HealableLogo';
-import { UserPlus, LayoutDashboard, Users, Mic } from 'lucide-react';
+import { UserPlus, LayoutDashboard, Users, UserCircle } from 'lucide-react';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -66,41 +66,42 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, title }) => {
                   <Button 
                     variant="ghost" 
                     className="w-full justify-start"
-                    onClick={() => navigate('/live-note-capture')}
+                    onClick={() => navigate('/profile')}
                   >
-                    <Mic className="mr-2 h-4 w-4" />
-                    Live Note Capture
+                    <UserCircle className="mr-2 h-4 w-4" />
+                    My Profile
                   </Button>
                 </li>
               </ul>
             </nav>
           </SidebarContent>
-          <SidebarFooter className="p-4 border-t">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-full bg-healable-primary text-white flex items-center justify-center font-medium">
-                  {userInfo?.name.charAt(0)}
+          <SidebarFooter className="p-4">
+            {userInfo && (
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-full bg-healable-primary text-white flex items-center justify-center font-medium">
+                  {userInfo.name.split(' ').map(name => name[0]).join('').toUpperCase()}
                 </div>
-                <div>
-                  <p className="text-sm font-medium">{userInfo?.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{userInfo?.role}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{userInfo.name}</div>
+                  <div className="text-xs text-muted-foreground">{userInfo.role}</div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={logout}>Log out</Button>
-            </div>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="w-full"
+              onClick={logout}
+            >
+              Logout
+            </Button>
           </SidebarFooter>
         </Sidebar>
-        
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="h-16 border-b flex items-center justify-between px-6">
-            <div className="flex items-center">
-              <SidebarTrigger />
-              <h1 className="text-xl font-bold text-healable-secondary ml-4">{title}</h1>
-            </div>
-          </header>
-          <main className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto">
+          <div className="container mx-auto p-4">
+            {title && <h1 className="text-2xl font-bold mb-4">{title}</h1>}
             {children}
-          </main>
+          </div>
         </div>
       </div>
     </SidebarProvider>

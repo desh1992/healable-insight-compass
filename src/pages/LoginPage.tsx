@@ -115,7 +115,7 @@ const LoginPage: React.FC = () => {
                 transition={{ delay: 0.3 }}
               >
                 <CardTitle className="text-2xl font-semibold text-center text-healable-secondary">
-                  Welcome Back
+                  Welcome
                 </CardTitle>
               </motion.div>
               <motion.div

@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactDOM from 'react-dom';
 import { useAudioTranscription } from '@/hooks/useAudioTranscription';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import SpeakerTranscription from '@/components/SpeakerTranscription';
 
 interface Message {
   id: number;
@@ -229,7 +230,9 @@ const LiveNoteCapturePage: React.FC = () => {
     isPaused,
     messageId,
     shouldCreateNewMessage,
-    transcribedText
+    transcribedText,
+    speakerMessages,  // Using the new speaker-separated messages
+    currentSpeakerId  // Current speaker ID for UI feedback
   } = useAudioTranscription(patientId);
   
   const [displayedMessages, setDisplayedMessages] = useState<Message[]>([]);
@@ -324,6 +327,26 @@ const LiveNoteCapturePage: React.FC = () => {
         speaker: 'system'
       });
     }
+  };
+
+  const renderTranscriptionSection = () => {
+    return (
+      <Card className="flex-1 flex flex-col h-full overflow-hidden mt-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Transcription</CardTitle>
+        </CardHeader>
+        <CardContent className="py-0 flex-grow overflow-hidden">
+          <ScrollArea className="h-full pr-4">
+            <SpeakerTranscription 
+              messages={speakerMessages}
+              currentSpeakerId={currentSpeakerId}
+              isRecording={isTranscribing}
+            />
+            <div ref={messagesEndRef} />
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -455,39 +478,19 @@ const LiveNoteCapturePage: React.FC = () => {
         <div className="flex flex-1 gap-4 p-4 overflow-hidden z-10 transparent-bg">
           {/* Live Conversation Area */}
           <div className="flex-1 flex flex-col h-full overflow-hidden transparent-bg">
-            <ScrollArea className="flex-1 transparent-bg">
-              <div className="space-y-4 p-4 transparent-bg">
-                {displayedMessages.length === 0 && !isTranscribing && (
-                  <div className="text-center text-gray-500 mt-8">
-                    Click "Start Capture" to begin recording and transcribing the conversation
-                  </div>
-                )}
-                
-                {/* Use layoutId to prevent re-animations when text changes */}
-                <AnimatePresence>
-                  {displayedMessages.map((message) => (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      layoutId={`message-${message.id}`} 
-                      transition={{ 
-                        layout: { duration: 0 }, // Disable layout animation
-                        opacity: { duration: 0.3 } // Keep fade animation
-                      }}
-                      className="flex flex-col p-4 rounded-lg bg-white/75 backdrop-blur-sm border border-gray-200 shadow-sm"
-                    >
-                      <div className="text-sm text-gray-500 mb-1">
-                        {message.timestamp}
-                      </div>
-                      <div>{message.text}</div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-                <div ref={messagesEndRef} />
+            {isTranscribing || speakerMessages.length > 0 ? (
+              // Use the new speaker-separated transcription component
+              <SpeakerTranscription 
+                messages={speakerMessages}
+                currentSpeakerId={currentSpeakerId}
+                isRecording={isTranscribing}
+              />
+            ) : (
+              <div className="text-center text-gray-500 mt-8">
+                Click "Start Capture" to begin recording and transcribing the conversation
               </div>
-            </ScrollArea>
+            )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* History section */}
